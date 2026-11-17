@@ -76,30 +76,32 @@ Les règles n'utilisent que des entiers et de petites tables. Elles sont donc re
   - nœuds facultatifs repris : `Key_0..15`, `Joystick_Base`/`Joystick_Stick`, `RFID_Reader`/`RFID_Badge`, `Timer_7Seg` (`Timer_Digits`), `OLED` (`OLED_Screen`), `Hint_Button`, `Wire_Terminals`, matériaux `LED_Backlight_1..5`/`LED_Status_1..5`.
   - s'il manque un nœud facultatif, la version procédurale le remplace. Si le chargement échoue, toute la mallette procédurale est utilisée.
 
-### Mesures (box, Chrome + ANGLE/llvmpipe, `measure.mjs`, v0.1.0 en ligne)
-La box n'est pas un S20 : les fps ci-dessous viennent d'un rendu logiciel. Regarder les appels et les triangles.
+### Mesures (box, Chrome + ANGLE/llvmpipe, `measure.mjs`, v0.1.1, commit deabf25)
+La box n'est pas un S20 : les fps viennent d'un rendu logiciel. Regarder les appels et les triangles.
 
 | Vue | Appels 412×915 | Triangles | Appels 915×412 | Triangles |
 |---|---|---|---|---|
-| Menu | 33 | 17,1 k | 33 | 17,1 k |
-| Mallette fermée | 38 | 19,1 k | 38 | 19,1 k |
-| Vue d'ensemble | 38 | 19,1 k | 38 | 19,1 k |
-| Fils | 27 | 17,8 k | 30 | 18,0 k |
-| Clavier | 28 | 17,8 k | 26 | 14,8 k |
-| Joystick | 26 | 16,4 k | 26 | 14,9 k |
-| Badge RFID | 27 | 15,6 k | 31 | 18,4 k |
-| Inclinaison | 25 | 16,4 k | 23 | 15,8 k |
-| Contrôle / OLED | 28 | 15,6 k | 30 | 15,4 k |
-| Victoire | 39 | 19,3 k | 39 | 19,3 k |
-| Explosion | 40 | 19,4 k | 39 | 19,4 k |
+| Menu | 29 | 13,0 k | 29 | 13,0 k |
+| Mallette fermée | 34 | 15,0 k | 34 | 15,0 k |
+| Vue d'ensemble | 34 | 15,0 k | 34 | 15,0 k |
+| Fils | 24 | 14,0 k | 29 | 14,1 k |
+| Clavier | 24 | 14,0 k | 27 | 12,6 k |
+| Joystick | 20 | 12,2 k | 20 | 11,8 k |
+| Badge RFID | 26 | 12,2 k | 30 | 14,6 k |
+| Inclinaison | 20 | 12,2 k | 19 | 11,8 k |
+| Contrôle / OLED | 26 | 12,2 k | 28 | 13,0 k |
+| Victoire | 35 | 15,3 k | 35 | 15,3 k |
+| Explosion | 40 | 16,0 k | 39 | 16,0 k |
 
-Textures environ 14 Mo, 28 programmes, aucune transmission, 0 erreur de page. Avec `tier=2` et un DPR de 3, le pixelRatio est bien plafonné à 2 (38 appels en vue d'ensemble, 44 au pic de l'explosion).
+Textures environ 24,5 Mo, 22 programmes, aucune transmission, 0 erreur de page. Toutes les vues restent sous 100 appels (pic : 40 en explosion). Le pixelRatio reste plafonné à 2 dans le code.
 
 ## Tests
 ```sh
 node test/logic.test.js     # 205 022 vérifications sur 5000 codes : solubles, erreurs, BOUM, chrono, score, indices, fautes de frappe
 node test/manual.test.mjs   # le manuel rendu (DOM) résout les 5000 mêmes mallettes ; fiche arbitre 200/200
 node test/e2e-touch.mjs [url]   # 134 vérifications au vrai toucher en 412×915 et 915×412, 0 erreur console
+node test/e2e-glb-pad.mjs [url] # GLB, course du couvercle 0 à −110°, manette (4 directions × 2 orientations), BatchedMesh, plein écran, appels < 100
+node test/live-sw.mjs 'https://passcool17.github.io/defuse-mallette/?v=<sha>'
 ```
 
 ## Ressources et licences
