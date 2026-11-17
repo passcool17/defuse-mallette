@@ -370,7 +370,7 @@ export function createModules(C, M, hooks) {
       move(p) { if (!tilt.drag) return; tilt.target.set(p.px - tilt.drag.px, p.py - tilt.drag.py).divideScalar(110).add(tilt.drag.base); if (tilt.target.length() > 1) tilt.target.normalize(); tilt.src = 'touch'; },
       up() { tilt.drag = null; tilt.target.set(0, 0); },
       sensor(x, y) { if (tilt.drag) return; tilt.target.set(x, y); if (tilt.target.length() > 1) tilt.target.normalize(); tilt.src = 'capteur'; },
-      shake() { const r = G.shake(); if (r === 'ignore') { say('shakeIgnored'); return; } tilt.shakeFlash = 1; tilt.lastShake = performance.now(); say('shake', G.shakes); }
+      shake() { const r = G.shake(); if (r === 'ignore') { say('shakeIgnored'); return; } tilt.shakeFlash = 1; tilt.lastShake = performance.now(); tilt.stillMs = 0; say('shake', G.shakes); }
     },
     ctrl: {
       down(p) { const [X, Y] = LAYOUT.ctrl.hint; if (Math.hypot(p.px - X, p.py - Y) < 60) { hintPress = 1; say('hintButton'); } }
@@ -409,7 +409,9 @@ export function createModules(C, M, hooks) {
       if (tilt.hold >= 1) { tilt.armed = false; tilt.hold = 0; const res = G.tilt(dir); say('tilt', { dir, r: res }); outcome('inclinaison', res); }
     } else if (!dir) { tilt.dir = null; tilt.hold = 0; }
     // secousses : 2 s sans secousse → on valide le compte
-    if (live && G.shakes > 0 && now - tilt.lastShake > 2000) { const res = G.still(); if (res !== 'ignore') { say('still', res); outcome('inclinaison', res); } }
+    // temps immobile cumulé image par image (≤ 250 ms par image) : un gel du navigateur ne valide pas trop tôt
+    const frMs = Math.min(250, Math.max(0, now - (tilt.lastNow ?? now))); tilt.lastNow = now; tilt.stillMs = G.shakes > 0 ? (tilt.stillMs || 0) + frMs : 0;
+    if (live && G.shakes > 0 && tilt.stillMs > 2000) { const res = G.still(); if (res !== 'ignore') { say('still', res); outcome('inclinaison', res); } }
     tilt.shakeFlash = Math.max(0, tilt.shakeFlash - dt * 4);
     hintPress = Math.max(0, hintPress - dt * 5); hintBtn.position.y = 0.004 - hintPress * 0.003;
     hooks.caseTilt && hooks.caseTilt(tilt.v);
