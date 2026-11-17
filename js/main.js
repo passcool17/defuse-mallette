@@ -107,7 +107,9 @@ function fitDistance(hw, hh, margin = 1.08) {
   const vf = THREE.MathUtils.degToRad(camera.fov), hf = 2 * Math.atan(Math.tan(vf / 2) * camera.aspect);
   return Math.max(hw / Math.tan(hf / 2), hh / Math.tan(vf / 2)) * margin;
 }
+let camOverride = null; // tests / captures : caméra imposée (DM.camAt)
 function viewPose(v, t) {
+  if (camOverride) { wantPos.fromArray(camOverride[0]); wantLook.fromArray(camOverride[1]); return; }
   const portrait = camera.aspect < 1;
   if (v === 'menu') { // la mallette fermée qui se balance ; décalée pour tomber dans l'espace libre entre le titre et le panneau
     const a = Math.sin(t * 0.00018) * 0.5 + 0.3, d = portrait ? 8.4 : 6.6;
@@ -596,7 +598,7 @@ window.DM = {
   wires: () => mods.wires.map(w => w.cut), nodes: () => { const n = []; C.root.traverse(o => o.name && n.push(o.name)); return n; },
   perf: () => ({ ...perf, tier: gpu.tier, low, pr: renderer.getPixelRatio(), gpu: gpu.gpu }), tilt: () => ({ v: mods.tilt.v.toArray().map(x => +x.toFixed(2)), hold: mods.tilt.hold }),
   audio: () => Sfx.ctx ? { state: Sfx.ctx.state, bed: !!Sfx.bed, muted: Sfx.muted } : null, settings, oled: () => oledMsg, source: () => C.source, glbParts: () => glbUsed,
-  handlers: mods.handlers, gamepadDebug: () => ({ active: gamepad.active, cur: { ...cur }, cursor: cursorMesh.visible }), lidAt: a => { lidAngle = a; }, toggleFullscreen,
+  camAt: (pos, look) => { camOverride = pos ? [pos, look] : null; }, handlers: mods.handlers, gamepadDebug: () => ({ active: gamepad.active, cur: { ...cur }, cursor: cursorMesh.visible }), lidAt: a => { lidAngle = a; }, toggleFullscreen,
   lidInfo: () => ({ pos: C.lid.position.toArray().map(v => +v.toFixed(4)), parent: C.lid.parent && C.lid.parent.name, rot: +C.lid.rotation.x.toFixed(3) }),
   projLocal: (name, x = 0, y = 0, z = 0) => { const o = scene.getObjectByName(name); if (!o) return null; const v = new THREE.Vector3(x, y, z); o.localToWorld(v); v.project(camera); const r = canvas.getBoundingClientRect(); return [+(r.left + (v.x + 1) / 2 * r.width).toFixed(1), +(r.top + (1 - v.y) / 2 * r.height).toFixed(1)]; }
 };
