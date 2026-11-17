@@ -425,7 +425,7 @@ function frame(now) {
     if (now - lidT > 250) { lidT = now; drawLid(); }
     if (now - (frame.h || 0) > 200) { frame.h = now; updateHud(); }
   }
-  camUpdate(dt, now);
+  camUpdate(Math.min(0.25, realMs / 1000), now); // caméra en temps réel (converge même à bas fps)
   const menuLike = phase === 'menu' || phase === 'brief';
   fill.intensity += ((menuLike ? 2.6 : 0.7) - fill.intensity) * Math.min(1, dt * 4);
   fill.position.copy(camera.position).add(new THREE.Vector3(-1.2, 2.2, 0)); fill.target.position.copy(camLook);
@@ -596,7 +596,9 @@ window.DM = {
   wires: () => mods.wires.map(w => w.cut), nodes: () => { const n = []; C.root.traverse(o => o.name && n.push(o.name)); return n; },
   perf: () => ({ ...perf, tier: gpu.tier, low, pr: renderer.getPixelRatio(), gpu: gpu.gpu }), tilt: () => ({ v: mods.tilt.v.toArray().map(x => +x.toFixed(2)), hold: mods.tilt.hold }),
   audio: () => Sfx.ctx ? { state: Sfx.ctx.state, bed: !!Sfx.bed, muted: Sfx.muted } : null, settings, oled: () => oledMsg, source: () => C.source, glbParts: () => glbUsed,
-  gamepadDebug: () => ({ active: gamepad.active, cur: { ...cur }, cursor: cursorMesh.visible }), lidAt: a => { lidAngle = a; }, toggleFullscreen
+  gamepadDebug: () => ({ active: gamepad.active, cur: { ...cur }, cursor: cursorMesh.visible }), lidAt: a => { lidAngle = a; }, toggleFullscreen,
+  lidInfo: () => ({ pos: C.lid.position.toArray().map(v => +v.toFixed(4)), parent: C.lid.parent && C.lid.parent.name, rot: +C.lid.rotation.x.toFixed(3) }),
+  projLocal: (name, x = 0, y = 0, z = 0) => { const o = scene.getObjectByName(name); if (!o) return null; const v = new THREE.Vector3(x, y, z); o.localToWorld(v); v.project(camera); const r = canvas.getBoundingClientRect(); return [+(r.left + (v.x + 1) / 2 * r.width).toFixed(1), +(r.top + (1 - v.y) / 2 * r.height).toFixed(1)]; }
 };
 
 // ---------- Démarrage ----------
