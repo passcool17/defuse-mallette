@@ -12,11 +12,17 @@ const V = '?v=' + VERSION;
 const PRECACHE = [
   './', './index.html', './manuel.html', './manifest.webmanifest', './icon.svg', './icon-192.png', './icon-512.png',
   './style.css' + V, './manual.css' + V, './logic.js' + V,
-  './js/main.js' + V, './js/audio.js' + V, './js/case-model.js' + V, './js/modules.js' + V, './js/displays.js' + V, './js/fx.js' + V, './js/manual.js' + V,
+  './js/main.js' + V, './js/audio.js' + V, './js/case-model.js' + V, './js/modules.js' + V, './js/displays.js' + V, './js/fx.js' + V, './js/manual.js' + V, './js/gamepad.js' + V,
+  './assets/defuse_case_v1.glb' + V,
   './vendor/three-0.187.0/three.module.min.js',
   './vendor/three-0.187.0/addons/geometries/RoundedBoxGeometry.js',
   './vendor/three-0.187.0/addons/environments/RoomEnvironment.js',
   './vendor/three-0.187.0/addons/utils/BufferGeometryUtils.js',
+  './vendor/three-0.187.0/addons/loaders/GLTFLoader.js', './vendor/three-0.187.0/addons/loaders/KTX2Loader.js',
+  './vendor/three-0.187.0/addons/libs/meshopt_decoder.module.js', './vendor/three-0.187.0/addons/libs/ktx-parse.module.js',
+  './vendor/three-0.187.0/addons/libs/zstddec.module.js', './vendor/three-0.187.0/addons/utils/SkeletonUtils.js',
+  './vendor/three-0.187.0/addons/utils/WorkerPool.js', './vendor/three-0.187.0/addons/math/ColorSpaces.js',
+  './vendor/three-0.187.0/addons/libs/basis/basis_transcoder.js', './vendor/three-0.187.0/addons/libs/basis/basis_transcoder.wasm',
   './vendor/detect-gpu-5.0.70.esm.js', './vendor/qrcode-generator-2.0.4.mjs'
 ];
 

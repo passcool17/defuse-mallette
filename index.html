@@ -10,20 +10,21 @@
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="./icon-192.png">
-<link rel="stylesheet" href="./style.css?v=0.1.0">
+<link rel="stylesheet" href="./style.css?v=0.1.1">
 <link rel="modulepreload" href="./vendor/three-0.187.0/three.module.min.js">
 <script type="importmap">
 {"imports":{
   "three": "./vendor/three-0.187.0/three.module.min.js",
   "three/addons/": "./vendor/three-0.187.0/addons/",
-  "./js/audio.js": "./js/audio.js?v=0.1.0",
-  "./js/case-model.js": "./js/case-model.js?v=0.1.0",
-  "./js/modules.js": "./js/modules.js?v=0.1.0",
-  "./js/displays.js": "./js/displays.js?v=0.1.0",
-  "./js/fx.js": "./js/fx.js?v=0.1.0"
+  "./js/audio.js": "./js/audio.js?v=0.1.1",
+  "./js/case-model.js": "./js/case-model.js?v=0.1.1",
+  "./js/modules.js": "./js/modules.js?v=0.1.1",
+  "./js/displays.js": "./js/displays.js?v=0.1.1",
+  "./js/fx.js": "./js/fx.js?v=0.1.1",
+  "./js/gamepad.js": "./js/gamepad.js?v=0.1.1"
 }}
 </script>
-<script src="./logic.js?v=0.1.0"></script>
+<script src="./logic.js?v=0.1.1"></script>
 </head>
 <body data-screen="title">
 <canvas id="scene" aria-label="La mallette en 3D"></canvas>
@@ -65,7 +66,7 @@
     <label class="field"><span>Code de partie <small>(facultatif, pour rejouer une mallette)</small></span><input id="codeIn" inputmode="numeric" autocomplete="off" placeholder="ex. 48213-4" maxlength="8"></label>
     <p id="codeErr" class="err" role="alert"></p>
     <button id="play" class="primary" data-autofocus>Ouvrir la mallette</button>
-    <div class="links"><button id="openSettings" class="ghost">Réglages</button><button id="openHowto" class="ghost">Comment jouer</button><a class="ghost" href="manuel.html" target="_blank" rel="noopener">Manuel</a><button id="openCredits" class="ghost">Crédits</button></div>
+    <div class="links"><button id="openSettings" class="ghost">Réglages</button><button id="openHowto" class="ghost">Comment jouer</button><a class="ghost" href="manuel.html" target="_blank" rel="noopener">Manuel</a><button id="openCredits" class="ghost">Crédits</button><button id="fsTitle" class="ghost fs-only" aria-pressed="false">⛶ Plein écran</button></div>
   </div>
 </section>
 
@@ -93,9 +94,15 @@
 
 <section id="credits" class="screen hidden" aria-labelledby="t4"><div class="panel scroll">
   <h2 id="t4">Crédits</h2>
-  <p>Jeu, mallette 3D provisoire, textures et sons : faits par le jeu (procédural, Web Audio).</p>
+  <p>Jeu, plaques gravées, afficheurs et sons : faits par le code du jeu (canvas, Web Audio).</p>
+  <p>Mallette 3D (CC BY 4.0, assemblée et adaptée pour le jeu) :
+    « <a href="https://sketchfab.com/3d-models/pelican-case-2f6f5ca0d0514baeb9b511613f7f3227" target="_blank" rel="noopener">Pelican Case</a> » par N8 (nathanmlange) ;
+    « <a href="https://sketchfab.com/3d-models/keypad-b9968a00bc9249df927ff1969acf2f7e" target="_blank" rel="noopener">Keypad</a> » par Spellkaze ;
+    « <a href="https://sketchfab.com/3d-models/arcade-joystick-cff2d3483c4a452aaa9201b2a1b7d984" target="_blank" rel="noopener">Arcade Joystick</a> » par Johannes R. (selkie3d) ;
+    « <a href="https://sketchfab.com/3d-models/rfid-rc522-arduino-uno-compatible-16501915e98143e49930a755a87272b3" target="_blank" rel="noopener">RFID-RC522</a> » par davidg.dev ;
+    « <a href="https://sketchfab.com/3d-models/4-digits-7-segments-display-d36801d499a3483eb764dfa008b2f2df" target="_blank" rel="noopener">4 Digits 7 Segments Display</a> » par Thomp1 — Sketchfab,
+    <a href="https://creativecommons.org/licenses/by/4.0/deed.fr" target="_blank" rel="noopener">CC BY 4.0</a>. Modifications : pièces réunies dans une seule mallette, clavier 4×4, atlas de textures commun.</p>
   <p>three.js 0.187.0 (MIT) · detect-gpu 5.0.70 (MIT) · qrcode-generator 2.0.4, Kazuhiko Arase (MIT).</p>
-  <p>Modèle 3D à venir (choix de Pascal, CC BY 4.0) : « Pelican Case » par N8 ; « Keypad » par Spellkaze ; « Arcade Joystick » par Johannes R. (selkie3d) ; « RFID-RC522 » par davidg.dev ; « 4 Digits 7 Segments Display » par Thomp1 — Sketchfab.</p>
   <p>Inspiré du principe « suivre le manuel » des jeux de désamorçage à deux rôles.</p>
   <button id="creditsDone" class="primary">Retour</button>
 </div></section>
@@ -114,7 +121,7 @@
 
 <section id="pause" class="screen hidden" aria-labelledby="t6"><div class="panel">
   <h2 id="t6">Pause</h2><p>Code de partie : <b id="pauseCode"></b></p>
-  <button id="resume" class="primary">Reprendre</button><button id="quit" class="ghost">Abandonner</button>
+  <button id="resume" class="primary">Reprendre</button><button id="fsPause" class="ghost fs-only" aria-pressed="false">⛶ Plein écran</button><button id="quit" class="ghost">Abandonner</button>
 </div></section>
 
 <section id="end" class="screen hidden" aria-labelledby="endTitle"><div class="panel">
@@ -131,6 +138,6 @@
   <button id="manualClose" class="primary close">Retour à la mallette</button>
 </section>
 
-<script type="module" src="./js/main.js?v=0.1.0"></script>
+<script type="module" src="./js/main.js?v=0.1.1"></script>
 </body>
 </html>

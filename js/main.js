@@ -8,6 +8,7 @@ import { makeMaterials, buildProceduralCase, loadCaseGLB, DIM, LID_OPEN, PLATE }
 import { createModules, LAYOUT, HEX } from './modules.js';
 import { makeSevenSeg, makeOled, makeLidScreen } from './displays.js';
 import { createFx } from './fx.js';
+import { createGamepad } from './gamepad.js';
 
 const VERSION = new URL(import.meta.url).searchParams.get('v') || 'dev';
 const L = window.DefuseLogic;
@@ -39,6 +40,8 @@ const hemi = new THREE.HemisphereLight(0xcfe0ff, 0x2a1c12, 1.1); scene.add(hemi)
 const key = new THREE.DirectionalLight(0xffe2c0, 2.2); key.position.set(-3, 8, 5); scene.add(key);
 const rim = new THREE.DirectionalLight(0x7fb0ff, 1.0); rim.position.set(5, 3, -6); scene.add(rim);
 const panelGlow = new THREE.PointLight(0x9fc8ff, 1.4, 5, 1.5); panelGlow.position.set(0, 1.0, 0.1); scene.add(panelGlow);
+// lumière d'appoint qui suit la caméra : forte au menu (mallette fermée bien visible), douce en jeu
+const fill = new THREE.DirectionalLight(0xfff0dc, 0); fill.name = 'Fill'; scene.add(fill, fill.target);
 const alarm = new THREE.PointLight(0xff2a1a, 0, 9, 1.2); alarm.position.set(0, 2.2, 1.8); scene.add(alarm);
 const blast = new THREE.PointLight(0xffa040, 0, 20, 1); blast.position.set(0, 1, 0.5); scene.add(blast);
 
@@ -314,7 +317,7 @@ addEventListener('keydown', e => {
     if (T) { kbTilt.set(T[0], T[1]); e.preventDefault(); } else if ((k === 's' || k === 'S' || k === ' ') && !e.repeat) { H.inclinaison.shake(); e.preventDefault(); }
   }
 });
-const kbTilt = new THREE.Vector2();
+const kbTilt = new THREE.Vector2(), gpTilt = new THREE.Vector2();
 addEventListener('keyup', e => { if (/^Arrow/.test(e.key)) kbTilt.set(0, 0); });
 
 // ---------- Capteurs (GY-6500 ↔ DeviceOrientation / DeviceMotion) ----------
@@ -407,7 +410,7 @@ function frame(now) {
   // le chrono suit le temps réel, même à faible fps
   if (live) { G.tick(realMs); if (G.over) { updateHud(); endGame(G.over); } }
   // inclinaison : clavier ou capteurs
-  if (live && view === 'inclinaison') { if (kbTilt.lengthSq()) mods.handlers.inclinaison.sensor(kbTilt.x, kbTilt.y); else if (sensor.on) mods.handlers.inclinaison.sensor(sensor.x, sensor.y); else if (!mods.tilt.drag) mods.tilt.target.set(0, 0); }
+  if (live && view === 'inclinaison') { if (kbTilt.lengthSq()) mods.handlers.inclinaison.sensor(kbTilt.x, kbTilt.y); else if (gpTilt.lengthSq()) mods.handlers.inclinaison.sensor(gpTilt.x, gpTilt.y); else if (sensor.on) mods.handlers.inclinaison.sensor(sensor.x, sensor.y); else if (!mods.tilt.drag) mods.tilt.target.set(0, 0); }
   if (G) mods.update(dt, now, live);
   cineUpdate(dt, now);
   if (!C.lid.userData.fly) { C.lid.rotation.x = lidAngle; }
@@ -423,6 +426,10 @@ function frame(now) {
     if (now - (frame.h || 0) > 200) { frame.h = now; updateHud(); }
   }
   camUpdate(dt, now);
+  const menuLike = phase === 'menu' || phase === 'brief';
+  fill.intensity += ((menuLike ? 2.6 : 0.7) - fill.intensity) * Math.min(1, dt * 4);
+  fill.position.copy(camera.position).add(new THREE.Vector3(-1.2, 2.2, 0)); fill.target.position.copy(camLook);
+  gamepad.poll(); updateCursor();
   fx.update(dt, now); // particules
   renderer.render(scene, camera);
   const ri = renderer.info.render; perf.calls = ri.calls; perf.tris = ri.triangles; perf.frames++;
@@ -476,12 +483,97 @@ bind('manualBtn', () => { $('manualFrame').src = 'manuel.html?embed=1&code=' + e
 bind('manualClose', () => { show(null); $('manualFrame').src = 'about:blank'; });
 syncSound();
 
+
+// ---------- Plein écran ----------
+const fsEl = document.documentElement, fsOk = !!(document.fullscreenEnabled || document.webkitFullscreenEnabled);
+document.body.classList.toggle('no-fs', !fsOk);
+function fsActive() { return !!(document.fullscreenElement || document.webkitFullscreenElement); }
+function toggleFullscreen() {
+  if (!fsOk) return;
+  if (fsActive()) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+  else { const r = (fsEl.requestFullscreen || fsEl.webkitRequestFullscreen).call(fsEl, { navigationUI: 'hide' }); if (r && r.catch) r.catch(() => {}); }
+}
+function syncFs() { const on = fsActive(); for (const id of ['fsTitle', 'fsPause']) { const b = $(id); if (b) { b.textContent = on ? '⛶ Quitter le plein écran' : '⛶ Plein écran'; b.setAttribute('aria-pressed', on); } } }
+document.addEventListener('fullscreenchange', syncFs); document.addEventListener('webkitfullscreenchange', syncFs);
+bind('fsTitle', toggleFullscreen); bind('fsPause', toggleFullscreen);
+
+// ---------- Manette ----------
+const CURSOR_MODS = { fils: 1, clavier: 1, rfid: 1 };
+const cur = { fils: 0, clavier: 0, rfid: 0 };
+const cursorMesh = new THREE.Mesh(new THREE.RingGeometry(0.82, 1, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xff8a1f, transparent: true, opacity: 0.95, depthTest: false, toneMapped: false }));
+cursorMesh.name = 'Gamepad_Cursor'; cursorMesh.renderOrder = 5; cursorMesh.visible = false;
+function cursorTarget(v) {
+  if (v === 'fils') { const n = G.R.wires.length; cur.fils = Math.min(cur.fils, n - 1); return [(LAYOUT.fils.x0 + LAYOUT.fils.x1) / 2, LAYOUT.fils.rows[cur.fils], 30]; }
+  if (v === 'clavier') return [LAYOUT.clavier.xs[cur.clavier % 4], LAYOUT.clavier.ys[Math.floor(cur.clavier / 4)], 46];
+  if (v === 'rfid') return [...LAYOUT.rfid.tags[cur.rfid], 60];
+  return null;
+}
+function updateCursor() {
+  const show = gamepad.active && phase === 'play' && !paused && !cine && G && CURSOR_MODS[view];
+  cursorMesh.visible = !!show; if (!show) return;
+  const [px, py, r] = cursorTarget(view), mount = mods.plates[view].mount;
+  if (cursorMesh.parent !== mount) mount.add(cursorMesh);
+  cursorMesh.position.set((px / PLATE.CW - 0.5) * PLATE.W, 0.013, (py / PLATE.CH - 0.5) * PLATE.D);
+  const k = r * PLATE.W / PLATE.CW * (1 + 0.06 * Math.sin(performance.now() / 160)); cursorMesh.scale.set(k, 1, k);
+}
+const STEP = { Haut: [0, -1], Bas: [0, 1], Gauche: [-1, 0], Droite: [1, 0] };
+function focusables() { const scr = document.querySelector('.screen:not(.hidden)'); if (!scr) return []; return [...scr.querySelectorAll('button, input, a[href], select')].filter(e => !e.disabled && e.offsetParent !== null && !e.closest('.hidden')); }
+function menuMove(dir) {
+  const list = focusables(); if (!list.length) return;
+  const a = document.activeElement, i = list.indexOf(a);
+  if (a && a.type === 'range' && (dir === 'Gauche' || dir === 'Droite')) { a.value = +a.value + (dir === 'Droite' ? 1 : -1); a.dispatchEvent(new Event('input', { bubbles: true })); return; }
+  if (a && a.type === 'radio' && (dir === 'Gauche' || dir === 'Droite')) { const rs = [...document.querySelectorAll(`[name="${a.name}"]`)]; const j = (rs.indexOf(a) + (dir === 'Droite' ? 1 : rs.length - 1)) % rs.length; rs[j].focus(); rs[j].click(); return; }
+  const d = dir === 'Haut' || dir === 'Gauche' ? -1 : 1; const n = list[(i < 0 ? 0 : i + d + list.length) % list.length]; n.focus({ preventScroll: false });
+}
+const BACK = { settings: 'settingsDone', howto: 'howtoDone', credits: 'creditsDone', brief: 'briefBack', pause: 'resume', manualOverlay: 'manualClose' };
+const gamepad = createGamepad({
+  used() { document.body.classList.add('gamepad'); },
+  tilt(x, y, on) { if (on && view === 'inclinaison' && phase === 'play') gpTilt.set(x, y); else gpTilt.set(0, 0); },
+  dir(d) {
+    if (phase !== 'play' || paused || cine) { if (!cine) menuMove(d); return; }
+    const H = mods.handlers, [dx, dy] = STEP[d];
+    if (view === 'overview') { if (dx) stepView(dx); return; }
+    if (view === 'joystick') { H.joystick.nudge(d); return; }
+    if (view === 'fils') { cur.fils = Math.max(0, Math.min(G.R.wires.length - 1, cur.fils + dy)); if (dx) stepView(dx); return; }
+    if (view === 'clavier') { const c = Math.max(0, Math.min(3, cur.clavier % 4 + dx)), r = Math.max(0, Math.min(3, Math.floor(cur.clavier / 4) + dy)); cur.clavier = r * 4 + c; return; }
+    if (view === 'rfid') { const c = Math.max(0, Math.min(2, cur.rfid % 3 + dx)), r = Math.max(0, Math.min(1, Math.floor(cur.rfid / 3) + dy)); cur.rfid = r * 3 + c; return; }
+    if (view === 'ctrl' && dx) stepView(dx);
+  },
+  button(i) {
+    if (cine) { if (i === 0 || i === 9) skipCine(); return; }
+    if (phase !== 'play' || paused) {
+      const scr = document.querySelector('.screen:not(.hidden)');
+      if (i === 0) { const a = document.activeElement; if (a && a !== document.body) a.click(); else { const f = focusables()[0]; f && f.focus(); } }
+      if (i === 1 && scr && BACK[scr.id]) $(BACK[scr.id]).click();
+      if (i === 9 && scr && scr.id === 'pause') $('resume').click();
+      return;
+    }
+    const H = mods.handlers;
+    if (i === 4) stepView(-1); else if (i === 5) stepView(1);
+    else if (i === 1) setView('overview');
+    else if (i === 3) useHint();
+    else if (i === 9) $('pauseBtn').click();
+    else if (i === 8) { Sfx.init(); Sfx.setMuted(!Sfx.muted); syncSound(); }
+    else if (i === 0) {
+      if (view === 'overview') stepView(1);
+      else if (view === 'joystick') H.joystick.dir('Clic');
+      else if (view === 'fils') H.fils.down({ px: (LAYOUT.fils.x0 + LAYOUT.fils.x1) / 2, py: LAYOUT.fils.rows[cur.fils] });
+      else if (view === 'clavier') H.clavier.key(L.KEYS[cur.clavier]);
+      else if (view === 'rfid') H.rfid.scan(cur.rfid + 1);
+      else if (view === 'inclinaison') H.inclinaison.shake();
+      else if (view === 'ctrl') useHint();
+    } else if (i === 2) { if (view === 'inclinaison') H.inclinaison.shake(); else if (view === 'clavier') H.clavier.key('*'); }
+  }
+});
+addEventListener('gamepadconnected', () => { gamepad.active = true; toast('Manette connectée : A valider · B retour · LB/RB modules · Y indice'); });
+addEventListener('pointerdown', () => { if (gamepad.active) { gamepad.active = false; document.body.classList.remove('gamepad'); } }, true);
+
 // ---------- Palier GPU ----------
 async function detectTier() {
   try { const r = await getGPUTier({ benchmarksURL: new URL('../detect-gpu-benchmarks', import.meta.url).href }); gpu = { tier: r.tier ?? 2, gpu: r.gpu || '?', type: r.type }; }
   catch (e) { gpu = { tier: 2, gpu: '?', type: 'erreur' }; }
   if (forcedTier !== null) gpu.tier = forcedTier;
-  if (gpu.tier <= 1 && !low) { low = true; prCap = 1; Q *= 0.5; scene.environment = null; hemi.intensity = 1.5; resize(); }
+  if (gpu.tier <= 1 && !low) { low = true; prCap = 1; Q *= 0.5; hemi.intensity = 1.3; resize(); } // environnement gardé : le GLB est en PBR (sinon le métal est noir)
 }
 
 // ---------- API de test et de mesure ----------
@@ -503,7 +595,8 @@ window.DM = {
   cine: () => cine && { type: cine.type, t: (performance.now() - cine.t0) / 1000 }, lid: () => +C.lid.rotation.x.toFixed(3),
   wires: () => mods.wires.map(w => w.cut), nodes: () => { const n = []; C.root.traverse(o => o.name && n.push(o.name)); return n; },
   perf: () => ({ ...perf, tier: gpu.tier, low, pr: renderer.getPixelRatio(), gpu: gpu.gpu }), tilt: () => ({ v: mods.tilt.v.toArray().map(x => +x.toFixed(2)), hold: mods.tilt.hold }),
-  audio: () => Sfx.ctx ? { state: Sfx.ctx.state, bed: !!Sfx.bed, muted: Sfx.muted } : null, settings, oled: () => oledMsg, source: () => C.source, glbParts: () => glbUsed
+  audio: () => Sfx.ctx ? { state: Sfx.ctx.state, bed: !!Sfx.bed, muted: Sfx.muted } : null, settings, oled: () => oledMsg, source: () => C.source, glbParts: () => glbUsed,
+  gamepadDebug: () => ({ active: gamepad.active, cur: { ...cur }, cursor: cursorMesh.visible }), lidAt: a => { lidAngle = a; }, toggleFullscreen
 };
 
 // ---------- Démarrage ----------
