@@ -16,9 +16,11 @@ async function run(W, H) {
   const p = await launch(); await p.size(W, H);
   const q = url.includes('?') ? '&' : '?';
   await p.goto(url + q + 'nosw=1&tier=2&seed=48213');
-  const ev = s => p.ev(s), frames = n => sleep(n * 120);
+  const ev = s => p.ev(s);
   const press = async (i, hold = 260) => { await ev(`__pad.buttons[${i}].pressed = true`); await sleep(hold); await ev(`__pad.buttons[${i}].pressed = false`); await sleep(200); };
-  const settle = async () => { await sleep(300); for (let i = 0; i < 60; i++) { if (await ev('DM.settled()')) break; await sleep(120); } };
+  const frames = (n = 2) => ev(`new Promise(r => { let k = ${n}; const f = () => (--k <= 0 ? r(1) : requestAnimationFrame(f)); requestAnimationFrame(f); })`);
+  // caméra posée + 2 images rendues (matrices à jour), robuste quand la box tourne à 1–2 fps
+  const settle = async () => { await sleep(300); for (let i = 0; i < 150; i++) { if (await ev('DM.settled()')) break; await sleep(100); } await frames(2); return true; };
   // 1. GLB et nœuds
   const src = await ev('DM.source()'); ok(src.startsWith('glb:') && src.includes('defuse_case_v1.glb?v='), 'source GLB versionnée : ' + src);
   const nodes = await ev('DM.nodes()');

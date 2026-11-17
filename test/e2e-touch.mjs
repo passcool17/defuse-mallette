@@ -23,7 +23,9 @@ async function run(W, H) {
   const shot = async n => { if (SHOTS) await p.shot(`${SHOTS}/${n}-${tag}.png`); };
   const sc = (id, px, py) => ev(`DM.screenOf('${id}', ${px}, ${py})`);
   const inView = async ([x, y]) => x > 0 && x < W && y > 0 && y < H;
-  const settle = async () => { await sleep(300); return waitFor('DM.settled()', 5000); };
+  const frames = (n = 2) => ev(`new Promise(r => { let k = ${n}; const f = () => (--k <= 0 ? r(1) : requestAnimationFrame(f)); requestAnimationFrame(f); })`);
+  // caméra posée + 2 images rendues (matrices à jour), robuste quand la box tourne à 1–2 fps
+  const settle = async () => { await sleep(300); for (let i = 0; i < 150; i++) { if (await ev('DM.settled()')) break; await sleep(100); } await frames(2); return true; };
 
   // --- menu, réglages ---
   await sleep(800); ok(await visible('#title') && await visible('#play'), 'menu visible'); await calls('menu'); await shot('01-menu');
@@ -50,7 +52,7 @@ async function run(W, H) {
   await settle(); await calls('overview'); await shot('05-vue-ensemble');
   const { S, R } = G0; const LAY = await ev('DM.LAYOUT');
   // toucher un module dans la vue d'ensemble = s'en approcher
-  async function focus(id) { const pt = await sc(id, 256, 244); await p.tap(pt[0], pt[1]); await sleep(150); ok(await ev('DM.view()') === id, `toucher ${id} → vue ${id}`); await settle(); await calls(id); }
+  async function focus(id) { const pt = await sc(id, 256, 244); await p.tap(pt[0], pt[1]); await sleep(150); ok(await ev('DM.view()') === id, `toucher ${id} → vue ${id} (vue ${await ev('DM.view()')})`); await settle(); await calls(id); }
   async function back() { await tapSel('#back'); await settle(); }
   // --- 1 Fils ---
   await focus('fils'); await shot('10-fils');
@@ -58,8 +60,9 @@ async function run(W, H) {
     ok(await ev(`DM.G().solved.fils`), 'fils désamorcé au toucher'); ok((await ev('DM.wires()'))[S.fils.cut], 'fil coupé (animation)'); await shot('11-fil-coupe'); }
   // --- 2 Clavier (passage par ▶ : fils → clavier) ---
   await tapSel('#next'); await settle(); ok(await ev('DM.view()') === 'clavier', '▶ passe au clavier'); await calls('clavier');
+  await ev(`(() => { const G = DM.G(); if (G.__kp) return; G.__kp = 1; const o = G.pressKey.bind(G); window.__keys = []; G.pressKey = k => { window.__keys.push(k); return o(k); }; })()`);
   for (const k of (S.clavier.code + S.clavier.enter)) { const i = ['1','2','3','A','4','5','6','B','7','8','9','C','*','0','#','D'].indexOf(k); const pt = await sc('clavier', LAY.clavier.xs[i % 4], LAY.clavier.ys[Math.floor(i / 4)]); await p.tap(pt[0], pt[1]); await sleep(80); }
-  await sleep(300); ok(await ev(`DM.G().solved.clavier`), 'clavier désamorcé'); await shot('12-clavier');
+  await sleep(300); ok(await ev(`DM.G().solved.clavier`), 'clavier désamorcé (voulu ' + S.clavier.code + S.clavier.enter + ', reçu ' + (await ev('(window.__keys || []).join("")')) + ', fps ' + (await ev('DM.perf().fps')) + ')'); await shot('12-clavier');
   // --- 3 Joystick : glisser le manche dans 4 directions, puis toucher (clic) ---
   await back(); await focus('joystick'); await shot('13-joystick');
   { const [cx, cy] = LAY.joystick.c; const c = await sc('joystick', cx, cy);
