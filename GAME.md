@@ -2,9 +2,10 @@
 
 **Jouer :** https://passcool17.github.io/defuse-mallette/ · **Manuel de l'expert :** https://passcool17.github.io/defuse-mallette/manuel.html · **Dépôt :** https://github.com/passcool17/defuse-mallette
 
-## État (v0.1.0, 16 nov. 2026)
-- Jouable de bout en bout sur téléphone, en portrait (412×915) comme en paysage (915×412), au toucher ou au clavier d'ordinateur.
-- La mallette est **procédurale** : le modèle GLB choisi par Pascal n'est pas encore livré (voir « Modèles 3D prévus »). Le chargeur GLB est déjà prêt et tolérant (`?glb=…`).
+## État (v0.1.1, 17 nov. 2026)
+- Jouable de bout en bout sur téléphone, en portrait (412×915) comme en paysage (915×412), au toucher, au clavier d'ordinateur ou à la **manette** (API Gamepad).
+- La mallette est le **modèle GLB** `assets/defuse_case_v1.glb` (assemblé par Modélisation et Rendu à partir des modèles crédités plus bas). `?glb=0` force l'ancienne mallette procédurale, qui sert aussi de secours si le GLB ne se charge pas.
+- Bouton **plein écran** (menu et pause), case mieux éclairée au menu, cibles du bouton « Vue d'ensemble » et du sommaire du manuel portées à 44 px.
 - Tests : logique sur 5000 codes, manuel = jeu sur 5000 codes, vrai tactile CDP dans les deux orientations, 0 erreur console, moins de 100 appels de dessin partout.
 - Pas encore essayé sur un vrai Galaxy S20 ni sur la vraie mallette ESP32.
 
@@ -44,6 +45,13 @@ Les règles n'utilisent que des entiers et de petites tables. Elles sont donc re
   - Joystick : flèches ou WASD, Entrée ou Espace = Clic.
   - Inclinaison : flèches maintenues ; S ou Espace = secousse.
 - Entrée, Espace ou Échap passent les cinématiques.
+- **Manette** (disposition standard ; un message s'affiche à la connexion, toucher l'écran rend la main au tactile) :
+  - Menus : croix ou stick gauche pour se déplacer (gauche/droite changent un curseur ou un choix), A valide, B revient.
+  - En jeu : LB / RB changent de module, B = vue d'ensemble, Y = indice, Start = pause, Select = son.
+  - Fils, clavier, badges : un anneau jaune (curseur) se déplace avec la croix ; A coupe, appuie ou scanne. X = `*` au clavier.
+  - Joystick : la croix ou le stick donnent les **mêmes 4 directions** que les flèches ; A = Clic.
+  - Inclinaison : le stick gauche penche la mallette (en continu), A ou X = secousse.
+  - Contrôle : A = bouton Indice.
 
 ## Mise en scène et son
 - Ambiance : une table en bois ronde sous une lampe, des fenêtres de ville la nuit, des modules rétroéclairés en RVB, une gravure lumineuse sur chaque plaque.
@@ -53,11 +61,16 @@ Les règles n'utilisent que des entiers et de petites tables. Elles sont donc re
 - Tout le son est synthétisé en Web Audio : nappe de tension qui monte avec le temps, bip de la minuterie, buzzer d'erreur, clics, lecture RFID, secousses. 🔊/🔇 est mémorisé. `prefers-reduced-motion` donne une version allégée.
 
 ## Technique
-- **three.js 0.187.0** hébergé avec le jeu (`vendor/`, aucun CDN). Modules ES + importmap, URL versionnées `?v=0.1.0`.
+- **three.js 0.187.0** hébergé avec le jeu (`vendor/`, aucun CDN). Modules ES + importmap, URL versionnées `?v=0.1.1`.
 - **Service worker** maison : réseau d'abord pour HTML/JS/CSS, cache d'abord pour `vendor/` (noms versionnés). Les anciens caches sont supprimés.
 - **detect-gpu 5.0.70** hébergé (`detect-gpu-benchmarks/`) : palier ≤ 1 → pixelRatio 1 et moins de particules. `?tier=2` force le mode normal. pixelRatio plafonné à 2.
 - Budget S20 : pas d'ombres dynamiques (ombre de contact simulée), pas de transmission, DEL et touches instanciées, plaques en CanvasTexture. `?fps=1` affiche le compteur (fps, appels, triangles, palier, GPU).
 - Logique pure dans `logic.js`, partagée par le jeu, le manuel et les tests.
+- **GLB de la mallette** (`assets/defuse_case_v1.glb?v=0.1.1`, 948 228 o, md5 `ec5bf89e…`) : extensions `KHR_texture_basisu` (KTX2Loader avec le transcodeur Basis **local** `vendor/three-0.187.0/addons/libs/basis/`, aucun CDN), `EXT_meshopt_compression` (MeshoptDecoder), `KHR_mesh_quantization`. Le GLB, le transcodeur (.js/.wasm) et les chargeurs sont mis en cache par le service worker. 3 tentatives de chargement, puis repli procédural.
+  - Couvercle : `Case_Lid` est enfant de `Case_Root` ; la charnière vient du nœud (0 ; 0,1715 ; −0,2375), rien n'est codé en dur. Ouvert = `rotation.x` −100° (plage 0 à −110°).
+  - Touches : `Key_0..15` restent séparées dans le GLB et sont fusionnées au chargement en un **THREE.BatchedMesh** (enfoncement et couleur par touche avec `setMatrixAt`/`setColorAt`) ; le toucher reste exact par touche (`batchId` du lancer de rayon).
+  - `Timer_7Seg`, `OLED_Screen` et `Lid_Screen` reçoivent des CanvasTexture du jeu (UV retournées en v au chargement) ; les `LED_Backlight_1..5` sont pilotées en émissif (couleur du module, verte une fois désamorcé).
+  - Les gravures du jeu (plaques en CanvasTexture) sont posées 1,4 mm au-dessus des plaques du GLB (y 0,162) avec `polygonOffset` : pas de z-fighting. Les fils restent dessinés par le code sur `Wire_Terminals`. Le badge unique du GLB est masqué (le jeu garde ses 6 badges).
 - **Contrat GLB** (`loadCaseGLB` dans `js/case-model.js`) :
   - nœuds obligatoires : `Case_Body`, `Case_Lid` (origine sur la charnière), `Lid_Screen` (matériau `Screen`, UV 0–1), `Panel_1..5` (`Panel_Ctrl` est créé s'il manque).
   - nœuds facultatifs repris : `Key_0..15`, `Joystick_Base`/`Joystick_Stick`, `RFID_Reader`/`RFID_Badge`, `Timer_7Seg` (`Timer_Digits`), `OLED` (`OLED_Screen`), `Hint_Button`, `Wire_Terminals`, matériaux `LED_Backlight_1..5`/`LED_Status_1..5`.
@@ -93,18 +106,18 @@ node test/e2e-touch.mjs [url]   # 134 vérifications au vrai toucher en 412×915
 - Code du jeu : MIT (`LICENSE`).
 - three.js 0.187.0 (MIT), detect-gpu 5.0.70 (MIT), qrcode-generator 2.0.4 (MIT) : hébergés dans `vendor/`.
 - Sons : synthétisés par le code (aucun fichier audio, aucun modèle génératif).
-- Mallette v0.1 : géométrie procédurale (code du jeu).
-- **Modèles 3D prévus (pas encore intégrés, GLB en attente)**, choisis par Pascal, tous sous **CC BY 4.0**. Ils seront crédités dans le jeu (écran Crédits) et ici :
-  - « Pelican Case » par **N8 (nathanmlange)** : https://sketchfab.com/3d-models/pelican-case-2f6f5ca0d0514baeb9b511613f7f3227
+- Mallette de secours (`?glb=0`) : géométrie procédurale (code du jeu).
+- **Modèles 3D** (choisis par Pascal), tous sous **CC BY 4.0** (https://creativecommons.org/licenses/by/4.0/), crédités aussi dans le jeu (écran Crédits) :
+  - « 03 Pelican Case » par **N8 (nathanmlange)** : https://sketchfab.com/3d-models/pelican-case-2f6f5ca0d0514baeb9b511613f7f3227
   - « Keypad » par **Spellkaze** : https://sketchfab.com/3d-models/keypad-b9968a00bc9249df927ff1969acf2f7e
   - « Arcade Joystick » par **Johannes R. (selkie3d)** : https://sketchfab.com/3d-models/arcade-joystick-cff2d3483c4a452aaa9201b2a1b7d984
   - « RFID-RC522 » par **davidg.dev** : https://sketchfab.com/3d-models/rfid-rc522-arduino-uno-compatible-16501915e98143e49930a755a87272b3
   - « 4 Digits 7 Segments Display » par **Thomp1** : https://sketchfab.com/3d-models/4-digits-7-segments-display-d36801d499a3483eb764dfa008b2f2df
-  - Le GLB final, assemblé et retouché par Modélisation et Rendu (modifications à mentionner), sera livré dans `/workspace/assets3d/defuse-mallette/glb/defuse_case_v1.glb`. Il viendra avec un MANIFEST.md, selon la spec `/workspace/assets3d/defuse-mallette/SPEC.md`.
+  - **Modifications** : modèles assemblés en une seule mallette, retopologisés et réduits, recolorés, textures regroupées en atlas KTX2, ajout de 6 plaques rétroéclairées, d'un écran de couvercle et des pièces nommées pour le jeu (GLB `defuse_case_v1.glb`, Modélisation et Rendu). Le jeu ajoute ses propres gravures, fils, badges et écrans.
 - Inspiration (aucun contenu repris) : « Defuse the Bomb » de casecoregames, une mallette Etsy (annonce 1829735775), et le genre « Keep Talking and Nobody Explodes ».
 
 ## Prochaines étapes
-1. Intégrer `defuse_case_v1.glb` dès sa livraison : le charger par défaut, vérifier la course de la charnière, les touches et le manche, refaire les mesures. Garder la version procédurale en secours.
+1. Essayer une vraie manette (Xbox / PlayStation sur Android) : la disposition « standard » est supposée.
 2. Essai sur un vrai Galaxy S20 : fps, gyroscope, secousse (seuil de 14 m/s²), lisibilité de l'OLED.
 3. Prototype ESP32 à partir de docs/ESP32.md. Comparer les vecteurs de test (mulberry32 et parties complètes).
 4. Version imprimable du manuel (le CSS d'impression existe) et peut-être un niveau « expert » avec plus de règles.
