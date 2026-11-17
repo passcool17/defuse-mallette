@@ -155,7 +155,7 @@ export async function loadCaseGLB(url, renderer) {
   screen.material = new THREE.MeshBasicMaterial({ color: 0x000000, toneMapped: false }); screen.material.name = 'Screen';
   // Les écrans du jeu sont des CanvasTexture (flipY = true) ; les UV glTF ont v vers le bas : on retourne v sur l'OLED et le 7 segments.
   const flipV = o => o && o.traverse(m => { const uv = m.isMesh && m.geometry.attributes.uv; if (!uv || m.userData.vFlipped) return; for (let i = 0; i < uv.count; i++) uv.setY(i, 1 - uv.getY(i)); uv.needsUpdate = true; m.userData.vFlipped = true; });
-  flipV(get('Timer_7Seg')); flipV(get('OLED'));
+  flipV(get('Timer_7Seg')); flipV(get('OLED')); flipV(screen); // UV glTF (v vers le bas) → convention CanvasTexture
   // pièces facultatives (tolérant : rien n'est obligatoire)
   const OPT = ['Keypad_Base', 'Joystick_Base', 'Joystick_Stick', 'RFID_Reader', 'RFID_Badge', 'Tilt_Base', 'Timer_7Seg', 'OLED', 'Buzzer', 'Hint_Button', 'Wire_Terminals'];
   const parts = {}; for (const n of OPT) { const o = get(n); if (o) parts[n] = o; }

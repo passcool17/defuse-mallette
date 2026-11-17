@@ -335,14 +335,14 @@ export function createModules(C, M, hooks) {
       }
     },
     joystick: {
-      down(p) { joyState.down = { px: p.px, py: p.py, t: performance.now(), moved: false }; },
+      down(p) { joyState.down = { px: p.px, py: p.py, t: p.t ?? performance.now(), moved: false }; },
       move(p) {
         const d = joyState.down; if (!d) return;
         const dx = p.px - d.px, dy = p.py - d.py; if (Math.hypot(dx, dy) > 12) d.moved = true;
         joyState.v.set(dx, dy).divideScalar(90); if (joyState.v.length() > 1) joyState.v.normalize();
         handlers.joystick.check();
       },
-      up() { const d = joyState.down; joyState.down = null; joyState.v.set(0, 0); joyState.armed = true; if (d && !d.moved && performance.now() - d.t < 450) handlers.joystick.dir('Clic'); },
+      up(e) { const d = joyState.down; joyState.down = null; joyState.v.set(0, 0); joyState.armed = true; if (d && !d.moved && ((e && e.t) ?? performance.now()) - d.t < 450) handlers.joystick.dir('Clic'); },
       check() {
         const v = joyState.v, L = v.length();
         if (L < 0.3) joyState.armed = true;

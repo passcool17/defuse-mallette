@@ -280,7 +280,7 @@ canvas.addEventListener('pointerdown', e => {
   const h = plateHit(e);
   ptr = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now(), hit: h, mod: null };
   if (view === 'clavier') { const ki = mods.keyHit(ray); if (ki >= 0) { ptr.mod = 'clavier'; mods.handlers.clavier.key(L.KEYS[ki]); return; } } // touche du GLB (BatchedMesh)
-  if (h && view === h.id && mods.handlers[h.id]) { ptr.mod = h.id; mods.handlers[h.id].down(h); }
+  if (h && view === h.id && mods.handlers[h.id]) { ptr.mod = h.id; h.t = e.timeStamp; mods.handlers[h.id].down(h); }
 });
 canvas.addEventListener('pointermove', e => {
   if (!ptr || ptr.id !== e.pointerId) return;
@@ -289,7 +289,7 @@ canvas.addEventListener('pointermove', e => {
 function endPtr(e) {
   if (!ptr || ptr.id !== e.pointerId) return;
   const p = ptr; ptr = null; const dx = e.clientX - p.x, dy = e.clientY - p.y, quick = performance.now() - p.t < 600;
-  if (p.mod) { mods.handlers[p.mod].up && mods.handlers[p.mod].up(); return; }
+  if (p.mod) { mods.handlers[p.mod].up && mods.handlers[p.mod].up({ t: e.type === 'pointerup' ? e.timeStamp : Infinity }); return; } // horodatage de l’événement : robuste à bas fps
   if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.4 && quick && view !== 'overview') { stepView(dx < 0 ? 1 : -1); return; }
   if (Math.hypot(dx, dy) < 14 && p.hit && p.hit.id !== view) setView(p.hit.id); // toucher un module = s'en approcher
 }
