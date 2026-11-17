@@ -612,4 +612,8 @@ detectTier().then(ready); setTimeout(ready, 4000);
 if (qs.get('autostart') === '1') { settings.mode = qs.get('mode') || settings.mode; startFlow(qs.get('seed') ? +qs.get('seed') : undefined); }
 
 // ---------- Service worker ----------
-if ('serviceWorker' in navigator && qs.get('nosw') !== '1' && isSecureContext) addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=' + VERSION).catch(() => {}));
+if ('serviceWorker' in navigator && qs.get('nosw') !== '1' && isSecureContext) {
+  const reg = () => navigator.serviceWorker.register('./sw.js?v=' + VERSION).catch(() => {});
+  if (document.readyState === 'complete') reg();
+  else addEventListener('load', reg);
+}
