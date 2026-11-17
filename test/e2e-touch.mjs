@@ -98,9 +98,9 @@ async function run(W, H) {
   await tapSel('input[name=mode][value=duo] + span'); await ev(`document.getElementById('codeIn').value = ''`); await tapSel('#play');
   ok(await visible('#briefQR svg'), 'QR du manuel (duo)'); ok(!(await visible('#manualBtn')), 'pas de manuel dans la mallette en duo'); await shot('20-brief-duo');
   await tapSel('#go'); await sleep(400); await tapSel('#skip'); ok(await ev('DM.phase()') === 'play', 'intro passée (Passer)');
-  await tapSel('#hintBtn'); await sleep(200); ok(await ev('DM.G().hints') === 1 && await visible('#toast'), 'indice affiché et compté');
+  await tapSel('#hintBtn'); await waitFor('DM.G().hints >= 1', 6000); ok(await ev('DM.G().hints') === 1 && await visible('#toast'), 'indice affiché et compté (' + await ev('DM.G().hints') + ', toast ' + await visible('#toast') + ')');
   await focus('ctrl'); await shot('21-controle-oled'); 
-  { const [hx, hy] = LAY.ctrl.hint; const pt = await sc('ctrl', hx, hy); await p.tap(pt[0], pt[1]); await sleep(200); ok(await ev('DM.G().hints') === 2, 'bouton INDICE de la mallette'); }
+  { const [hx, hy] = LAY.ctrl.hint; const pt = await sc('ctrl', hx, hy); await p.tap(pt[0], pt[1]); await waitFor('DM.G().hints >= 2', 6000); ok(await ev('DM.G().hints') === 2, 'bouton INDICE de la mallette (' + await ev('DM.G().hints') + ', vue ' + await ev('DM.view()') + ')'); }
   const S2 = await ev('DM.G().S'), R2 = await ev('DM.G().R');
   await back(); await focus('fils');
   { const wrong = (S2.fils.cut + 1) % R2.wires.length; const pt = await sc('fils', 300, LAY.fils.rows[wrong]); await p.tap(pt[0], pt[1]); await sleep(300); ok(await ev('DM.G().mistakes') === 1, 'mauvais fil = 1 erreur'); await shot('22-erreur'); }
