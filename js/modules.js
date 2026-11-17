@@ -342,7 +342,7 @@ export function createModules(C, M, hooks) {
         joyState.v.set(dx, dy).divideScalar(90); if (joyState.v.length() > 1) joyState.v.normalize();
         handlers.joystick.check();
       },
-      up(e) { const d = joyState.down; joyState.down = null; joyState.v.set(0, 0); joyState.armed = true; if (d && !d.moved && ((e && e.t) ?? performance.now()) - d.t < 450) handlers.joystick.dir('Clic'); },
+      up(e) { const d = joyState.down; joyState.down = null; joyState.v.set(0, 0); joyState.armed = true; if (d && !d.moved && !(e && e.t === Infinity)) handlers.joystick.dir('Clic'); }, // appui sans glisser = Clic, sans limite de durée (fiable même à bas fps)
       check() {
         const v = joyState.v, L = v.length();
         if (L < 0.3) joyState.armed = true;

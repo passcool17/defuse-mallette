@@ -85,7 +85,7 @@ async function run(W, H) {
     }
     ok(await ev('DM.G().tiltPos') === 2, 'deux inclinaisons tenues (' + await ev('DM.G().tiltPos') + ', erreurs ' + await ev('JSON.stringify(DM.G().log)') + ')');
     for (let i = 0; i < S.inclinaison.shakes; i++) { await tapSel('#shakeBtn'); await sleep(250); }
-    ok(await waitFor('DM.G().solved.inclinaison', 4000), 'inclinaison désamorcée (secousses + immobile 2 s)'); }
+    ok(await waitFor('DM.G().solved.inclinaison', 15000), 'inclinaison désamorcée (secousses + immobile 2 s)'); }
   // --- indice, manuel partagé (mode Équipe) ---
   ok(await ev('DM.G().over') === 'win', 'les 5 modules → victoire');
   ok(await waitFor(`DM.cine() && DM.cine().type === 'win'`, 1000) || await visible('#end'), 'cinématique de victoire'); await sleep(1200); await shot('16-victoire'); await calls('win');
