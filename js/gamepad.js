@@ -14,6 +14,9 @@ export function createGamepad(api) {
     const ax = gp.axes[0] || 0, ay = gp.axes[1] || 0;
     let dir = null; for (const i of [12, 13, 14, 15]) if (press.includes(i)) dir = DIR[i];
     const sd = stickDir(ax, ay); if (!dir && sd) dir = sd;
+    let held = null; for (const i of [12, 13, 14, 15]) if (b(i)) held = DIR[i];
+    if (!held) { const L = Math.max(Math.abs(ax), Math.abs(ay)); if (L >= 0.3) held = Math.abs(ax) > Math.abs(ay) ? (ax > 0 ? 'Droite' : 'Gauche') : (ay > 0 ? 'Bas' : 'Haut'); }
+    if (api.lean) api.lean(held);
     // inclinaison : stick analogique continu (ou croix maintenue)
     let tx = Math.abs(ax) > 0.15 ? ax : 0, ty = Math.abs(ay) > 0.15 ? ay : 0;
     if (b(12)) ty = -1; if (b(13)) ty = 1; if (b(14)) tx = -1; if (b(15)) tx = 1;

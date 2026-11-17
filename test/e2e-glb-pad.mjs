@@ -17,8 +17,8 @@ async function run(W, H) {
   const q = url.includes('?') ? '&' : '?';
   await p.goto(url + q + 'nosw=1&tier=2&seed=48213');
   const ev = s => p.ev(s);
-  const press = async (i, hold = 260) => { await ev(`__pad.buttons[${i}].pressed = true`); await sleep(hold); await ev(`__pad.buttons[${i}].pressed = false`); await sleep(200); };
   const frames = (n = 2) => ev(`new Promise(r => { let k = ${n}; const f = () => (--k <= 0 ? r(1) : requestAnimationFrame(f)); requestAnimationFrame(f); })`);
+  const press = async (i, hold = 260) => { await ev(`__pad.buttons[${i}].pressed = true`); await frames(2); await sleep(hold); await ev(`__pad.buttons[${i}].pressed = false`); await frames(2); await sleep(200); };
   // caméra posée + 2 images rendues (matrices à jour), robuste quand la box tourne à 1–2 fps
   const settle = async () => { await sleep(300); for (let i = 0; i < 150; i++) { if (await ev('DM.settled()')) break; await sleep(100); } await frames(2); return true; };
   // 1. GLB et nœuds
@@ -42,13 +42,13 @@ async function run(W, H) {
   await ev(`DM.setMode('joystick')`); await settle();
   const sol = await ev('DM.G().S.joystick.dirs'); ok(JSON.stringify(sol) === '["Bas","Gauche","Droite","Haut"]', 'solution joystick 48213');
   const BTN = { Haut: 12, Bas: 13, Gauche: 14, Droite: 15 };
-  const base = await ev(`DM.projLocal('Joystick_Stick', 0, 0.002, 0)`);
+  const rest = await ev(`DM.projLocal('Joystick_Stick', 0, 0.036, 0)`);
   const dirRes = {};
   for (const d of sol) {
-    await ev(`__pad.buttons[${BTN[d]}].pressed = true`); await sleep(160);
+    await ev(`__pad.buttons[${BTN[d]}].pressed = true`); await frames(3); await sleep(160);
     const tip = await ev(`DM.projLocal('Joystick_Stick', 0, 0.036, 0)`);
-    await ev(`__pad.buttons[${BTN[d]}].pressed = false`); await sleep(250);
-    const dx = tip[0] - base[0], dy = tip[1] - base[1];
+    await ev(`__pad.buttons[${BTN[d]}].pressed = false`); await frames(3); await sleep(250);
+    const dx = tip[0] - rest[0], dy = tip[1] - rest[1];
     const seen = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'Droite' : 'Gauche') : (dy > 0 ? 'Bas' : 'Haut');
     dirRes[d] = { seen, dx: +dx.toFixed(1), dy: +dy.toFixed(1) };
     ok(seen === d, `joystick ${d} : le manche va ${seen} à l'écran (dx ${dx.toFixed(1)}, dy ${dy.toFixed(1)})`);
@@ -60,9 +60,9 @@ async function run(W, H) {
   await ev(`DM.setMode('inclinaison')`); await settle();
   const c0 = await ev(`DM.projLocal('Tilt_Marble')`); const tiltRes = {};
   for (const [d, ax] of [['Haut', [0, -1]], ['Bas', [0, 1]], ['Gauche', [-1, 0]], ['Droite', [1, 0]]]) {
-    await ev(`__pad.axes[0] = ${ax[0]}; __pad.axes[1] = ${ax[1]}`); await sleep(700);
+    await ev(`__pad.axes[0] = ${ax[0]}; __pad.axes[1] = ${ax[1]}`); await frames(3); await sleep(700);
     const m = await ev(`DM.projLocal('Tilt_Marble')`);
-    await ev(`__pad.axes[0] = 0; __pad.axes[1] = 0`); await sleep(700);
+    await ev(`__pad.axes[0] = 0; __pad.axes[1] = 0`); await frames(3); await sleep(700);
     const dx = m[0] - c0[0], dy = m[1] - c0[1];
     const seen = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'Droite' : 'Gauche') : (dy > 0 ? 'Bas' : 'Haut');
     tiltRes[d] = { seen, dx: +dx.toFixed(1), dy: +dy.toFixed(1) };

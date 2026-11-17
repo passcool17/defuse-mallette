@@ -353,7 +353,8 @@ export function createModules(C, M, hooks) {
         }
       },
       dir(d) { const r = G.joy(d); say('joy', { d, r }); outcome('joystick', r); },
-      nudge(d) { const V = { Haut: [0, -1], Bas: [0, 1], Gauche: [-1, 0], Droite: [1, 0] }[d]; joyState.v.set(V[0], V[1]); joyState.kb = performance.now(); handlers.joystick.dir(d); }
+      lean(d) { const V = { Haut: [0, -1], Bas: [0, 1], Gauche: [-1, 0], Droite: [1, 0] }[d]; if (!V) return; joyState.v.set(V[0], V[1]); joyState.kb = performance.now(); },
+      nudge(d) { handlers.joystick.lean(d); handlers.joystick.dir(d); }
     },
     rfid: {
       down(p) {

@@ -19,6 +19,7 @@ const S = 4;                                   // échelle monde de la mallette 
 const ORDER = ['fils', 'clavier', 'joystick', 'rfid', 'inclinaison', 'ctrl'];
 const VIEW_LABEL = { fils: '1 · Fils', clavier: '2 · Clavier', joystick: '3 · Joystick', rfid: '4 · Badge RFID', inclinaison: '5 · Inclinaison', ctrl: 'Contrôle', overview: 'Vue d’ensemble' };
 const store = { get(k, d) { try { const v = localStorage.getItem('defusemallette.' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem('defusemallette.' + k, JSON.stringify(v)); } catch (e) {} } };
+function buzz(pattern) { try { if (!navigator.vibrate) return; if (navigator.userActivation && !navigator.userActivation.isActive) return; navigator.vibrate(pattern); } catch (e) {} }
 
 // ---------- Qualité ----------
 const tierParam = qs.get('tier');
@@ -135,10 +136,20 @@ function viewPose(v, t) {
   // la barre du bas (portrait) ou la colonne de droite (paysage) prend de la place : on décale la cible
   const d = fitDistance(hw, hh, portrait ? 1.07 : 1.22);
   wantPos.copy(c).addScaledVector(dir, d);
-  if (portrait) { wantLook.z += 0.05; wantPos.z += 0.05; } else { wantLook.x += hw * 0.28; wantPos.x += hw * 0.28; }
+  if (portrait) { wantLook.z += 0.05; wantPos.z += 0.05; }
+}
+function applyFilmShift() {
+  // Paysage : la barre de 230 px est à droite. On décale le film pour cadrer le module
+  // dans l'espace restant, tout en visant son centre (pas de perspective de travers).
+  const w = innerWidth, h = innerHeight, close = ORDER.includes(view);
+  if (w > h && close) {
+    const cx = (w - 230) / 2;
+    camera.setViewOffset(w, h, w / 2 - cx, 0, w, h);
+  } else if (camera.view) camera.clearViewOffset();
 }
 function camUpdate(dt, t, snap) {
   viewPose(view, t);
+  applyFilmShift();
   const k = snap ? 1 : 1 - Math.pow(0.0009, dt);
   camPos.lerp(wantPos, k); camLook.lerp(wantLook, k);
   camera.position.copy(camPos);
@@ -255,7 +266,7 @@ function onModuleEvent(ev, a) {
     case 'hintButton': useHint(); break;
     case 'mistake':
       Sfx.buzzer(); shake = 0.08; alarm.intensity = 6; setOled('ERREUR ' + L.MODULE_LABEL[a].toUpperCase(), `${G.mistakes}/${G.maxMistakes}`, 3000);
-      if (navigator.vibrate) navigator.vibrate([90, 60, 90]); $('flash').className = 'red'; setTimeout(() => $('flash').className = '', 180);
+      buzz([90, 60, 90]); $('flash').className = 'red'; setTimeout(() => $('flash').className = '', 180);
       break;
     case 'solved': Sfx.good(); setOled(L.MODULE_LABEL[a].toUpperCase() + ' OK', `${G.solvedCount()}/5 MODULES`, 3000); toast(`${L.MODULE_LABEL[a]} désamorcé`, 'ok'); break;
   }
@@ -387,7 +398,7 @@ function cineUpdate(dt, now) {
     if (t < 1.3) { alarm.intensity = Math.floor(t * 12) % 2 ? 9 : 1; shake = 0.03 + t * 0.05; seg.draw(Math.floor(t * 12) % 2 ? '0000' : '    ', true); return; }
     if (!cine.blown) {
       cine.blown = 1; Sfx.bigBoom(); fx.explode(Q, camera); blast.intensity = 60; shake = RM ? 0.1 : 0.6; alarm.intensity = 0;
-      $('flash').className = 'white'; setTimeout(() => $('flash').className = '', 260); if (navigator.vibrate) navigator.vibrate([400, 80, 200]);
+      $('flash').className = 'white'; setTimeout(() => $('flash').className = '', 260); buzz([400, 80, 200]);
       // le couvercle est arraché et vole
       lidHome.parent = C.lid.parent; lidHome.pos.copy(C.lid.position); lidHome.rot.copy(C.lid.rotation);
       scene.attach(C.lid); C.lid.userData.fly = { v: new THREE.Vector3(0.8, 7.5, -2.5), w: new THREE.Vector3(-3.5, 0.6, 1.2) };
@@ -531,6 +542,7 @@ const BACK = { settings: 'settingsDone', howto: 'howtoDone', credits: 'creditsDo
 const gamepad = createGamepad({
   used() { document.body.classList.add('gamepad'); },
   tilt(x, y, on) { if (on && view === 'inclinaison' && phase === 'play') gpTilt.set(x, y); else gpTilt.set(0, 0); },
+  lean(d) { if (d && view === 'joystick' && phase === 'play' && !paused && !cine) mods.handlers.joystick.lean(d); },
   dir(d) {
     if (phase !== 'play' || paused || cine) { if (!cine) menuMove(d); return; }
     const H = mods.handlers, [dx, dy] = STEP[d];
