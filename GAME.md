@@ -113,7 +113,7 @@ node test/e2e-touch.mjs [url]   # 134 vérifications au vrai toucher en 412×915
   - « Arcade Joystick » par **Johannes R. (selkie3d)** : https://sketchfab.com/3d-models/arcade-joystick-cff2d3483c4a452aaa9201b2a1b7d984
   - « RFID-RC522 » par **davidg.dev** : https://sketchfab.com/3d-models/rfid-rc522-arduino-uno-compatible-16501915e98143e49930a755a87272b3
   - « 4 Digits 7 Segments Display » par **Thomp1** : https://sketchfab.com/3d-models/4-digits-7-segments-display-d36801d499a3483eb764dfa008b2f2df
-  - **Modifications** : modèles assemblés en une seule mallette, retopologisés et réduits, recolorés, textures regroupées en atlas KTX2, ajout de 6 plaques rétroéclairées, d'un écran de couvercle et des pièces nommées pour le jeu (GLB `defuse_case_v1.glb`, Modélisation et Rendu). Le jeu ajoute ses propres gravures, fils, badges et écrans.
+  - **Modifications** : pièces extraites et assemblées en une seule mallette (environ 7 500 triangles), textures recuites dans un atlas 1024² (couleur, normales, ORM) compressé en KTX2, l'afficheur de Thomp1 sert de gabarit de proportions ; ajout de pièces procédurales (plaques rétroéclairées, écran de couvercle, OLED, buzzer…) et nœuds nommés pour le jeu (GLB `defuse_case_v1.glb`, Modélisation et Rendu). Le jeu ajoute ses propres gravures, fils, badges et écrans.
 - Inspiration (aucun contenu repris) : « Defuse the Bomb » de casecoregames, une mallette Etsy (annonce 1829735775), et le genre « Keep Talking and Nobody Explodes ».
 
 ## Prochaines étapes
