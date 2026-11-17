@@ -16,6 +16,9 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 
 export const DIM = { W: 0.60, D: 0.40, HB: 0.17, HL: 0.085, RIM: 0.022 };
 export const DECK_Y = DIM.HB - 0.008;                         // dessus de la plaque intérieure
@@ -140,21 +143,25 @@ export function buildProceduralCase(M) {
 
 // Chargement du futur GLB (non branché par défaut : ?glb=chemin.glb). Mêmes noms que ci-dessus.
 export async function loadCaseGLB(url, renderer) {
-  const [{ GLTFLoader }, { KTX2Loader }, { MeshoptDecoder }] = await Promise.all([
-    import('three/addons/loaders/GLTFLoader.js'), import('three/addons/loaders/KTX2Loader.js'), import('three/addons/libs/meshopt_decoder.module.js')]);
   const ktx2 = new KTX2Loader().setTranscoderPath(new URL('../vendor/three-0.187.0/addons/libs/basis/', import.meta.url).href).detectSupport(renderer);
   const gltf = await new GLTFLoader().setKTX2Loader(ktx2).setMeshoptDecoder(MeshoptDecoder).loadAsync(url);
   const root = gltf.scene, get = n => root.getObjectByName(n);
   const body = get('Case_Body'), lid = get('Case_Lid'), screen = get('Lid_Screen');
   if (!body || !lid || !screen) throw new Error('GLB : Case_Body, Case_Lid et Lid_Screen sont obligatoires');
   const mounts = {}; for (const n of PANELS) { mounts[n] = get(n); if (!mounts[n] && n !== 'Panel_Ctrl') throw new Error('GLB : ' + n + ' manquant'); }
-  if (!mounts.Panel_Ctrl) { mounts.Panel_Ctrl = new THREE.Object3D(); mounts.Panel_Ctrl.name = 'Panel_Ctrl'; body.add(mounts.Panel_Ctrl); }
+  if (!mounts.Panel_Ctrl) { mounts.Panel_Ctrl = new THREE.Object3D(); mounts.Panel_Ctrl.name = 'Panel_Ctrl'; mounts.Panel_1.parent.add(mounts.Panel_Ctrl); mounts.Panel_Ctrl.position.set(0, mounts.Panel_1.position.y, mounts.Panel_2.position.z); }
+  // couche du jeu (plaques gravées, DEL, fils) 1,4 mm au-dessus des plaques LED_Backlight du GLB (dessus à +1 mm du repère)
+  const layers = {}; for (const n of PANELS) { const l = new THREE.Object3D(); l.name = n + '_Layer'; l.position.y = 0.0014; mounts[n].add(l); layers[n] = l; }
   screen.material = new THREE.MeshBasicMaterial({ color: 0x000000, toneMapped: false }); screen.material.name = 'Screen';
+  // Les écrans du jeu sont des CanvasTexture (flipY = true) ; les UV glTF ont v vers le bas : on retourne v sur l'OLED et le 7 segments.
+  const flipV = o => o && o.traverse(m => { const uv = m.isMesh && m.geometry.attributes.uv; if (!uv || m.userData.vFlipped) return; for (let i = 0; i < uv.count; i++) uv.setY(i, 1 - uv.getY(i)); uv.needsUpdate = true; m.userData.vFlipped = true; });
+  flipV(get('Timer_7Seg')); flipV(get('OLED'));
   // pièces facultatives (tolérant : rien n'est obligatoire)
   const OPT = ['Keypad_Base', 'Joystick_Base', 'Joystick_Stick', 'RFID_Reader', 'RFID_Badge', 'Tilt_Base', 'Timer_7Seg', 'OLED', 'Buzzer', 'Hint_Button', 'Wire_Terminals'];
   const parts = {}; for (const n of OPT) { const o = get(n); if (o) parts[n] = o; }
   const keys = []; for (let i = 0; i < 16; i++) keys.push(get('Key_' + i) || null);
   if (keys.every(Boolean)) parts.keys = keys;
   const ledMats = {}; root.traverse(o => { if (!o.isMesh) return; for (const m of [].concat(o.material)) if (m && /^LED_(Backlight|Status)_\d$/.test(m.name)) ledMats[m.name] = m; });
-  return { root, body, lid, latches: get('Case_Latches'), screen, mounts, parts, ledMats, source: 'glb:' + url };
+  root.traverse(o => { if (o.isMesh) o.frustumCulled = true; });
+  return { root, body, lid, latches: get('Case_Latches'), screen, mounts: layers, panels: mounts, parts, ledMats, source: 'glb:' + url, isGLB: true };
 }

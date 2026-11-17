@@ -68,18 +68,24 @@ shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.004; shadow.scale.set(DI
 
 // ---------- Mallette + afficheurs + modules ----------
 const M = makeMaterials();
-let C = buildProceduralCase(M), glbUsed = [];
-// GLB du modèle choisi par Pascal (pas encore livré) : ?glb=chemin.glb pour l'essayer ; en cas d'échec, mallette procédurale
-if (qs.get('glb')) {
-  try { const g = await loadCaseGLB(qs.get('glb'), renderer); C = g; console.info('GLB chargé :', g.source); }
-  catch (e) { console.warn('GLB non chargé, mallette procédurale gardée :', e.message); }
+let C = null, glbUsed = [];
+// Mallette GLB (Pelican de N8 + pièces, CC BY 4.0) par défaut ; ?glb=0 → mallette procédurale ; ?glb=chemin.glb → autre modèle.
+// Le premier fetch peut échouer pendant la navigation (vu dans Chrome) : 3 essais, puis mallette procédurale en secours.
+const glbParam = qs.get('glb');
+const GLB_URL = glbParam && glbParam !== '0' ? glbParam : './assets/defuse_case_v1.glb?v=' + VERSION;
+if (glbParam !== '0') {
+  for (let i = 0; i < 3 && !C; i++) {
+    try { C = await loadCaseGLB(GLB_URL, renderer); }
+    catch (e) { if (i === 2) console.warn('GLB non chargé, mallette procédurale gardée :', e.message); else await new Promise(r => setTimeout(r, 250 * (i + 1))); }
+  }
 }
+if (!C) C = buildProceduralCase(M);
 C.root.scale.setScalar(S); scene.add(C.root);
 const seg = makeSevenSeg(), oled = makeOled();
 const lidScreen = makeLidScreen(url => { try { const q = qrcode(0, 'M'); q.addData(url); q.make(); const n = q.getModuleCount(), c = document.createElement('canvas'); c.width = c.height = n * 8; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.fillStyle = '#000'; for (let r = 0; r < n; r++) for (let k = 0; k < n; k++) if (q.isDark(r, k)) x.fillRect(k * 8, r * 8, 8, 8); return c; } catch (e) { return null; } });
 C.screen.material = lidScreen.mat;
 const mods = createModules(C, M, { KEYS: L.KEYS, BADGES: L.BADGES, seg, oled, on: onModuleEvent, caseTilt });
-glbUsed = mods.adoptGlbParts(C.parts, C.ledMats);
+glbUsed = mods.adoptGlbParts(C.parts, C.ledMats, { polygonOffset: !!C.isGLB });
 const floorY = 0;
 const fx = createFx(scene, floorY);
 
@@ -270,6 +276,7 @@ canvas.addEventListener('pointerdown', e => {
   canvas.setPointerCapture(e.pointerId);
   const h = plateHit(e);
   ptr = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now(), hit: h, mod: null };
+  if (view === 'clavier') { const ki = mods.keyHit(ray); if (ki >= 0) { ptr.mod = 'clavier'; mods.handlers.clavier.key(L.KEYS[ki]); return; } } // touche du GLB (BatchedMesh)
   if (h && view === h.id && mods.handlers[h.id]) { ptr.mod = h.id; mods.handlers[h.id].down(h); }
 });
 canvas.addEventListener('pointermove', e => {

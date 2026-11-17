@@ -71,7 +71,7 @@ const DRAW = {
     x.fillStyle = '#1c2027'; x.fillRect(rx - 110, ry - 80, 220, 160);
     x.save(); x.strokeStyle = c; x.shadowColor = c; x.shadowBlur = 10; x.lineWidth = 2; x.strokeRect(rx - 110, ry - 80, 220, 160);
     for (let i = 1; i <= 3; i++) { x.globalAlpha = 0.25 + i * 0.2; x.beginPath(); x.arc(rx - 30, ry, i * 22, -0.8, 0.8); x.stroke(); }
-    x.restore(); engrave(x, 'LECTEUR', rx + 46, ry - 52, 16, 'rgba(191,227,255,.7)', 'center', 0);
+    x.restore(); engrave(x, 'LECTEUR', rx + 168, ry - 66, 16, 'rgba(191,227,255,.7)', 'center', 0);
     engrave(x, 'BADGES', 34, 300, 15, 'rgba(191,227,255,.55)', 'left', 0);
   },
   inclinaison(x, R) {
@@ -444,10 +444,13 @@ export function createModules(C, M, hooks) {
     const r = canvas.getBoundingClientRect(); return [r.left + (p.x + 1) / 2 * r.width, r.top + (1 - p.y) / 2 * r.height];
   }
   // Modèle GLB (SPEC.md) : chaque pièce présente remplace la pièce procédurale (tolérant si absente)
-  const glb = { keys: null, stick: null, hint: null };
-  function adoptGlbParts(P, ledMats) {
+  const glb = { keys: null, stick: null, hint: null, batch: null };
+  const kM = new THREE.Matrix4(), kC = new THREE.Color(), WHITE = new THREE.Color(1, 1, 1);
+  function adoptGlbParts(P, ledMats, opts = {}) {
     if (!P) return [];
     const used = [];
+    // plaques de jeu au-dessus des plaques rétroéclairées du GLB (couche Panel_*_Layer à +1,4 mm) + polygonOffset : pas de z-fighting
+    if (opts.polygonOffset) for (const p of Object.values(plates)) { p.mat.polygonOffset = true; p.mat.polygonOffsetFactor = -2; p.mat.polygonOffsetUnits = -2; }
     if (P.Timer_7Seg) { P.Timer_7Seg.traverse(o => { if (o.isMesh && [].concat(o.material).some(m => m.name === 'Timer_Digits')) o.material = hooks.seg.mat; }); segMesh.visible = false; used.push('Timer_7Seg'); }
     if (P.OLED) { P.OLED.traverse(o => { if (o.isMesh && [].concat(o.material).some(m => m.name === 'OLED_Screen')) o.material = hooks.oled.mat; }); oledMesh.visible = false; used.push('OLED'); }
     if (P.Hint_Button) { hintBtn.visible = false; glb.hint = P.Hint_Button; glb.hintY = P.Hint_Button.position.y; used.push('Hint_Button'); }
@@ -455,12 +458,45 @@ export function createModules(C, M, hooks) {
     if (P.Joystick_Stick) { joy.visible = false; glb.stick = P.Joystick_Stick; used.push('Joystick_Stick'); }
     if (P.Joystick_Base) jbase.visible = false;
     if (P.Wire_Terminals) { termMesh.visible = false; used.push('Wire_Terminals'); }
-    if (P.keys) { keys.visible = false; glb.keys = P.keys.map(k => ({ o: k, y: k.position.y })); used.push('Key_0..Key_15'); }
+    // le badge unique du GLB est décoratif : le jeu a besoin des 6 badges étiquetés (ALPHA…FOXTROT)
+    if (P.RFID_Badge) { P.RFID_Badge.visible = false; used.push('RFID_Badge (masqué)'); }
+    if (P.keys) {
+      keys.visible = false;
+      const meshes = P.keys.map(k => { let m = null; k.traverse(o => { if (!m && o.isMesh) m = o; }); return m; });
+      if (meshes.every(Boolean)) {
+        // option A (Pascal) : 16 touches séparées dans le GLB, fusionnées ici en un seul BatchedMesh (1 appel de dessin)
+        let nv = 0, ni = 0; meshes.forEach(m => { nv += m.geometry.attributes.position.count; ni += m.geometry.index ? m.geometry.index.count : m.geometry.attributes.position.count; });
+        const batch = new THREE.BatchedMesh(16, nv, ni, meshes[0].material); batch.name = 'Keypad_Keys_Batched';
+        batch.perObjectFrustumCulled = false; batch.sortObjects = false;
+        const parent = P.keys[0].parent; parent.add(batch);
+        glb.keys = P.keys.map((k, i) => {
+          const gid = batch.addGeometry(meshes[i].geometry), id = batch.addInstance(gid);
+          k.updateMatrix(); const local = meshes[i] === k ? k.matrix.clone() : k.matrix.clone().multiply(meshes[i].matrix);
+          batch.setMatrixAt(id, local); batch.setColorAt(id, WHITE); k.visible = false;
+          return { id, local, glow: 0 };
+        });
+        glb.batch = batch; used.push('Key_0..Key_15 (BatchedMesh)');
+      } else { glb.keysLegacy = P.keys.map(k => ({ o: k, y: k.position.y })); used.push('Key_0..Key_15'); }
+    }
     glb.ledMats = ledMats || {};
+    for (const m of Object.values(glb.ledMats)) if (m.emissive) { m.emissiveIntensity = 1.6; m.toneMapped = false; }
     return used;
   }
-  function syncGlb() {
-    if (glb.keys) glb.keys.forEach((k, i) => { k.o.position.y = k.y - keyDown[i] * 0.003; });
+  function keyHit(raycaster) { // touche visée (BatchedMesh) → index 0…15, sinon −1
+    if (!glb.batch || !glb.batch.visible) return -1;
+    const h = raycaster.intersectObject(glb.batch, false)[0];
+    return h && h.batchId !== undefined ? glb.keys.findIndex(k => k.id === h.batchId) : -1;
+  }
+  function syncGlb(dt) {
+    if (glb.batch && R) {
+      const tint = new THREE.Color(HEX[R.keypadColor]);
+      glb.keys.forEach((k, i) => {
+        if (keyDown[i] > 0.5) k.glow = 1; else k.glow = Math.max(0, k.glow - (dt || 0.016) * 2.5);
+        kM.copy(k.local); kM.elements[13] -= keyDown[i] * 0.003; glb.batch.setMatrixAt(k.id, kM);
+        kC.copy(WHITE).lerp(tint, 0.18 + 0.5 * k.glow).multiplyScalar(1 + 0.9 * k.glow); glb.batch.setColorAt(k.id, kC);
+      });
+    }
+    if (glb.keysLegacy) glb.keysLegacy.forEach((k, i) => { k.o.position.y = k.y - keyDown[i] * 0.003; });
     if (glb.stick) { glb.stick.rotation.x = joy.rotation.x; glb.stick.rotation.z = joy.rotation.z; }
     if (glb.hint) glb.hint.position.y = glb.hintY - hintPress * 0.003;
     if (R && glb.ledMats) {
@@ -469,7 +505,7 @@ export function createModules(C, M, hooks) {
       ids.forEach((id, i) => { const m = glb.ledMats['LED_Status_' + (i + 1)]; if (m && m.emissive) m.emissive.set(G.solved[id] ? 0x2bff63 : 0x333333); });
     }
   }
-  return { plates, handlers, update: (dt, now, live) => { update(dt, now, live); syncGlb(); }, setRound, leds, allLeds, screenOf, wires, marble, tilt, MOD_MOUNT, adoptGlbParts,
+  return { plates, handlers, update: (dt, now, live) => { update(dt, now, live); syncGlb(dt); }, keyHit, setRound, leds, allLeds, screenOf, wires, marble, tilt, MOD_MOUNT, adoptGlbParts,
     plateMeshes: Object.values(plates).map(p => p.mesh), hintBtn };
 }
 function mergeGeoms(list) { // fusion minimale de géométries non indexées/indexées
