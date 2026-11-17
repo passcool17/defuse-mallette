@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="fr-CA">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#07090c">
+<meta name="color-scheme" content="dark">
+<meta name="description" content="Défuse la mallette : une mallette orange piégée en 3D, cinq modules, un désamorceur et un expert qui lit le manuel.">
+<title>Défuse la mallette</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<link rel="stylesheet" href="./style.css?v=0.1.0">
+<link rel="modulepreload" href="./vendor/three-0.187.0/three.module.min.js">
+<script type="importmap">
+{"imports":{
+  "three": "./vendor/three-0.187.0/three.module.min.js",
+  "three/addons/": "./vendor/three-0.187.0/addons/",
+  "./js/audio.js": "./js/audio.js?v=0.1.0",
+  "./js/case-model.js": "./js/case-model.js?v=0.1.0",
+  "./js/modules.js": "./js/modules.js?v=0.1.0",
+  "./js/displays.js": "./js/displays.js?v=0.1.0",
+  "./js/fx.js": "./js/fx.js?v=0.1.0"
+}}
+</script>
+<script src="./logic.js?v=0.1.0"></script>
+</head>
+<body data-screen="title">
+<canvas id="scene" aria-label="La mallette en 3D"></canvas>
+<div id="loading" role="status"><b>DÉFUSE</b><span>Ouverture de la mallette…</span></div>
+<div id="flash" aria-hidden="true"></div>
+<div id="fps" class="hidden" aria-hidden="true"></div>
+
+<header id="hud" class="hidden">
+  <button id="pauseBtn" class="icon" aria-label="Pause">❚❚</button>
+  <div class="stat"><span class="lbl">Chrono</span><b id="timer" role="timer">15:00</b></div>
+  <div class="stat"><span class="lbl">Erreurs</span><div id="strikes"></div></div>
+  <div class="stat small"><span class="lbl">Modules</span><b id="modCount">0/5</b></div>
+  <button id="manualBtn" class="icon team-only" aria-label="Ouvrir le manuel">📖</button>
+  <button id="sound" class="icon" aria-label="Couper le son">🔊</button>
+</header>
+<nav id="bar" aria-label="Modules">
+  <div id="sensorBar" class="hidden">
+    <button id="sensorBtn" class="chip" aria-pressed="false">📱 Activer l’inclinaison du téléphone</button>
+    <button id="shakeBtn" class="chip">〰 Secouer</button>
+  </div>
+  <div class="row">
+    <button id="prev" class="icon nav" aria-label="Module précédent">◀</button>
+    <div class="mid"><b id="viewName">Vue d’ensemble</b><button id="back" class="link hidden">Vue d’ensemble</button></div>
+    <button id="next" class="icon nav" aria-label="Module suivant">▶</button>
+    <button id="hintBtn" class="hint" aria-label="Indice (coûte 250 points)">💡<span id="hintCount">0</span></button>
+  </div>
+</nav>
+<div id="toast" role="status" aria-live="polite"></div>
+<button id="skip" class="hidden">Passer ›</button>
+
+<section id="title" class="screen" aria-labelledby="t1">
+  <div class="brand"><p class="kicker">Mallette M-5 · 5 modules</p><h1 id="t1">Défuse<br><span>la mallette</span></h1>
+  <p class="lede">Un désamorceur voit la mallette. Un expert lit le manuel. Parlez-vous vite.</p></div>
+  <div class="panel">
+    <fieldset class="seg"><legend>Mode</legend>
+      <label><input type="radio" name="mode" value="duo"><span><b>Duo</b><small>Désamorceur + Expert (2 appareils)</small></span></label>
+      <label><input type="radio" name="mode" value="equipe"><span><b>Équipe</b><small>2 à 4 joueurs, manuel partagé</small></span></label>
+    </fieldset>
+    <label class="field"><span>Code de partie <small>(facultatif, pour rejouer une mallette)</small></span><input id="codeIn" inputmode="numeric" autocomplete="off" placeholder="ex. 48213-4" maxlength="8"></label>
+    <p id="codeErr" class="err" role="alert"></p>
+    <button id="play" class="primary" data-autofocus>Ouvrir la mallette</button>
+    <div class="links"><button id="openSettings" class="ghost">Réglages</button><button id="openHowto" class="ghost">Comment jouer</button><a class="ghost" href="manuel.html" target="_blank" rel="noopener">Manuel</a><button id="openCredits" class="ghost">Crédits</button></div>
+  </div>
+</section>
+
+<section id="settings" class="screen hidden" aria-labelledby="t2"><div class="panel">
+  <h2 id="t2">Réglages</h2>
+  <label class="field"><span>Chrono <output id="minutesOut">15 min</output></span><input id="minutes" type="range" min="1" max="99" step="1" value="15"></label>
+  <label class="field"><span>Erreurs permises <output id="mistakesOut">3</output></span><input id="mistakes" type="range" min="1" max="9" step="1" value="3"><small>La mallette explose quand ce nombre d’erreurs est atteint.</small></label>
+  <p class="note">Score = 5 000 + 10 × secondes restantes − 500 × erreurs − 250 × indices.</p>
+  <button id="settingsDone" class="primary">OK</button>
+</div></section>
+
+<section id="howto" class="screen hidden" aria-labelledby="t3"><div class="panel scroll">
+  <h2 id="t3">Comment jouer</h2>
+  <ol class="how">
+    <li><b>Le désamorceur</b> tient la mallette (ce téléphone). Il décrit ce qu’il voit : couleurs des fils, du clavier, des DEL, le code de partie.</li>
+    <li><b>L’expert</b> ouvre <a href="manuel.html" target="_blank" rel="noopener">le manuel</a> sur un autre appareil (code QR au départ). Il ne voit pas la mallette et dit quoi faire.</li>
+    <li><b>Mode Équipe</b> : tout le monde voit la mallette et le manuel (bouton 📖) sur le même appareil.</li>
+    <li>Touchez un module pour vous en approcher. Glissez à gauche ou à droite, ou ◀ ▶, pour changer de module.</li>
+    <li>Fils : touchez un fil pour le couper. Clavier : touchez les touches. Joystick : glissez le manche, touchez-le pour cliquer. Badges : touchez un badge pour le passer sur le lecteur. Inclinaison : penchez le téléphone (📱) ou glissez sur le module, et « Secouer ».</li>
+    <li>💡 Indice : 1er appui = la ligne du manuel, 2e appui = la prochaine action. Chaque indice coûte 250 points.</li>
+    <li>Clavier d’ordinateur : Tab / Maj+Tab change de module, Échap = vue d’ensemble, H = indice, M = son ; chiffres, A–D, * et # pour le clavier ; flèches + Entrée pour le joystick ; flèches + S pour l’inclinaison.</li>
+  </ol>
+  <button id="howtoDone" class="primary">Compris</button>
+</div></section>
+
+<section id="credits" class="screen hidden" aria-labelledby="t4"><div class="panel scroll">
+  <h2 id="t4">Crédits</h2>
+  <p>Jeu, mallette 3D provisoire, textures et sons : faits par le jeu (procédural, Web Audio).</p>
+  <p>three.js 0.187.0 (MIT) · detect-gpu 5.0.70 (MIT) · qrcode-generator 2.0.4, Kazuhiko Arase (MIT).</p>
+  <p>Modèle 3D à venir (choix de Pascal, CC BY 4.0) : « Pelican Case » par N8 ; « Keypad » par Spellkaze ; « Arcade Joystick » par Johannes R. (selkie3d) ; « RFID-RC522 » par davidg.dev ; « 4 Digits 7 Segments Display » par Thomp1 — Sketchfab.</p>
+  <p>Inspiré du principe « suivre le manuel » des jeux de désamorçage à deux rôles.</p>
+  <button id="creditsDone" class="primary">Retour</button>
+</div></section>
+
+<section id="brief" class="screen hidden" aria-labelledby="t5"><div class="panel">
+  <p class="kicker" id="briefMode">Désamorceur + Expert</p>
+  <h2 id="t5">Code de partie</h2>
+  <p class="code" id="briefCode">00000-0</p>
+  <div id="briefDuo"><div class="qrrow"><div id="briefQR" aria-label="Code QR du manuel"></div>
+    <p><b>Expert :</b> scannez, ou ouvrez <a id="briefLink" href="manuel.html" target="_blank" rel="noopener">manuel.html</a> et tapez ce code. Le manuel marche hors ligne.</p></div></div>
+  <p id="briefTeam" class="hidden">Tout le monde voit la mallette. Le manuel s’ouvre avec le bouton 📖 en haut (le chrono continue).</p>
+  <p class="note" id="briefTime"></p>
+  <button id="go" class="primary">Ouvrir et démarrer le chrono</button>
+  <button id="briefBack" class="ghost">Retour</button>
+</div></section>
+
+<section id="pause" class="screen hidden" aria-labelledby="t6"><div class="panel">
+  <h2 id="t6">Pause</h2><p>Code de partie : <b id="pauseCode"></b></p>
+  <button id="resume" class="primary">Reprendre</button><button id="quit" class="ghost">Abandonner</button>
+</div></section>
+
+<section id="end" class="screen hidden" aria-labelledby="endTitle"><div class="panel">
+  <h2 id="endTitle">Mallette désamorcée</h2><p id="endSub"></p>
+  <dl class="stats"><div><dt>Temps restant</dt><dd id="endTime"></dd></div><div><dt>Erreurs</dt><dd id="endMist"></dd></div>
+  <div><dt>Indices</dt><dd id="endHints"></dd></div><div><dt>Modules</dt><dd id="endMods"></dd></div></dl>
+  <p class="score"><span>Score</span><b id="endScore">0</b><small>Meilleur (ce mode) : <span id="endBest">0</span> · code <span id="endCode"></span></small></p>
+  <button id="again" class="primary">Nouvelle mallette</button>
+  <div class="links"><button id="sameCode" class="ghost">Rejouer ce code</button><button id="toMenu" class="ghost">Menu</button></div>
+</div></section>
+
+<section id="manualOverlay" class="screen hidden" aria-label="Manuel">
+  <iframe id="manualFrame" title="Manuel de désamorçage" src="about:blank"></iframe>
+  <button id="manualClose" class="primary close">Retour à la mallette</button>
+</section>
+
+<script type="module" src="./js/main.js?v=0.1.0"></script>
+</body>
+</html>

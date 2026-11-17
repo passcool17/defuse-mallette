@@ -1,0 +1,41 @@
+/* Manuel imprimable : papier, encre, accent orange de la mallette. */
+:root { --paper: #f3efe6; --ink: #1d1b18; --mute: #5e5850; --line: #cfc6b5; --accent: #c94f05; --card: #fbf8f2; font-family: system-ui, "Segoe UI", Roboto, sans-serif; color: var(--ink); background: var(--paper); }
+* { box-sizing: border-box; }
+body { margin: 0; line-height: 1.5; padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+.top, main, .foot { max-width: 760px; margin: 0 auto; }
+.kicker { margin: 0; font-size: .75rem; letter-spacing: .16em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+h1 { margin: 4px 0 8px; font-size: clamp(1.8rem, 8vw, 2.6rem); line-height: 1.05; letter-spacing: -.01em; }
+.lede { margin: 0 0 16px; color: #3c3832; }
+.code { background: var(--card); border: 2px solid var(--ink); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 6px; }
+.code label { font-weight: 700; } .code small { font-weight: 400; color: var(--mute); }
+.code .row { display: flex; gap: 8px; }
+.code input { flex: 1; min-height: 48px; font: 700 1.3rem ui-monospace, "DejaVu Sans Mono", monospace; letter-spacing: .1em; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); min-width: 0; }
+.code button { min-height: 48px; min-width: 64px; border: 0; border-radius: 8px; background: var(--ink); color: #fff; font: 700 1rem system-ui, sans-serif; cursor: pointer; }
+input:focus-visible, button:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+#codeMsg { margin: 0; min-height: 1.4em; font-size: .9rem; } #codeMsg.bad { color: #b3261e; } #codeMsg.ok { color: #1f6b33; }
+.digits { display: flex; gap: 6px; flex-wrap: wrap; }
+.digits span { display: flex; flex-direction: column; align-items: center; min-width: 46px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; background: #fff; font: 800 1.3rem ui-monospace, monospace; }
+.digits small { font: 600 .7rem system-ui, sans-serif; color: var(--mute); } .digits .c { border-color: var(--accent); }
+.hidden { display: none !important; }
+.toc { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 4px; }
+.toc a { color: var(--ink); text-decoration: none; border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; font-size: .85rem; background: var(--card); min-height: 36px; display: inline-flex; align-items: center; }
+.sec { border-top: 3px solid var(--ink); margin-top: 26px; padding-top: 10px; }
+.sec h2 { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; font-size: 1.35rem; }
+.num { display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 1.05rem; }
+.sec p { margin: 6px 0; } .note { color: var(--mute); font-size: .92rem; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; margin: 10px 0; }
+.card h3 { margin: 2px 0 4px; font-size: 1rem; text-transform: uppercase; letter-spacing: .08em; }
+.rules, .steps { margin: 4px 0; padding-left: 1.4em; } .rules li, .steps li { margin: 4px 0; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; } @media (max-width: 420px) { .two { grid-template-columns: 1fr; } }
+table { border-collapse: collapse; width: 100%; margin: 8px 0; background: var(--card); font-size: .95rem; }
+th, td { border: 1px solid var(--line); padding: 7px 8px; text-align: left; } thead th { background: #e7e0d2; font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; }
+td { font: 700 1rem ui-monospace, "DejaVu Sans Mono", monospace; }
+.sw { display: inline-flex; align-items: center; gap: 5px; font: 600 .95rem system-ui, sans-serif; white-space: nowrap; }
+.sw::before { content: ""; width: 12px; height: 12px; border-radius: 3px; border: 1px solid rgba(0,0,0,.35); background: var(--c); }
+.sw-rouge { --c: #e02424; } .sw-vert { --c: #1fa846; } .sw-bleu { --c: #1f5fe0; } .sw-jaune { --c: #f2c513; } .sw-blanc { --c: #fff; } .sw-noir { --c: #16171a; }
+.badge { display: inline-block; margin: 2px 6px 2px 0; padding: 1px 8px; border: 1px solid var(--line); border-radius: 6px; background: #fff; font: 700 .85rem ui-monospace, monospace; }
+.arb summary { cursor: pointer; font-weight: 700; min-height: 44px; display: flex; align-items: center; color: var(--accent); }
+.arb-dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; } .arb-dl dt { font-weight: 700; } .arb-dl dd { margin: 0; }
+.foot { margin-top: 30px; color: var(--mute); font-size: .8rem; }
+body.embed .top .kicker, body.embed .lede, body.embed .foot { display: none; }
+@media print { body { background: #fff; } .code, .toc, .arb { display: none; } .sec { break-inside: avoid; } }

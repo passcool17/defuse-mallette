@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="fr-CA">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f3efe6">
+<meta name="description" content="Manuel de désamorçage de la mallette M-5 (Défuse la mallette). Fonctionne hors ligne.">
+<title>Manuel de désamorçage · Mallette M-5</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="./manual.css?v=0.1.0">
+<script src="./logic.js?v=0.1.0"></script>
+</head>
+<body>
+<header class="top">
+  <p class="kicker">Document technique · Mallette M-5 · rév. 0.1.0</p>
+  <h1>Manuel de désamorçage</h1>
+  <p class="lede">Vous êtes l’<b>expert</b>. Vous ne voyez pas la mallette : faites-vous décrire ce qui s’y trouve et dites au désamorceur quoi faire. Les règles sont les mêmes pour toutes les parties.</p>
+  <form id="codeForm" class="code" autocomplete="off">
+    <label for="code">Code de partie <small>(affiché sur le couvercle et l’écran OLED)</small></label>
+    <div class="row"><input id="code" inputmode="numeric" placeholder="48213-4" maxlength="8" aria-describedby="codeMsg"><button type="submit">OK</button></div>
+    <p id="codeMsg" role="status" aria-live="polite"></p>
+    <div id="digits" class="digits hidden" aria-label="Chiffres du code"></div>
+  </form>
+  <nav class="toc" aria-label="Sommaire"><a href="#s0">Lire le code</a><a href="#s1">1 Fils</a><a href="#s2">2 Clavier</a><a href="#s3">3 Joystick</a><a href="#s4">4 Badge</a><a href="#s5">5 Inclinaison</a><a href="#s6">Erreurs et score</a></nav>
+</header>
+<main id="manual"><noscript>Ce manuel a besoin de JavaScript pour afficher ses tables.</noscript></main>
+<footer class="foot"><p>Défuse la mallette · manuel v0.1.0 · les mêmes règles serviront pour la vraie mallette ESP32.</p></footer>
+<script type="module" src="./js/manual.js?v=0.1.0"></script>
+</body>
+</html>
