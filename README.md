@@ -7,6 +7,7 @@ Jeu 3D à deux en français, dans l'esprit de « Keep Talking », sur une mallet
 
 - **Duo** : deux appareils. La mallette s'ouvre sur l'un (téléphone conseillé) et le manuel sur l'autre, via le QR code ou le lien. Les deux appareils ne communiquent pas : c'est à vous de parler.
 - **Équipe** : un seul appareil. Le manuel s'ouvre par-dessus le jeu avec 📖, et la minuterie continue de tourner.
+- Se joue au toucher, au clavier d'ordinateur ou à la **manette** (API Gamepad) ; bouton plein écran au menu et en pause.
 - Chaque partie a un **code** (ex. `48213-4`) affiché sur la mallette. Le même code donne la même mallette, et le manuel peut afficher la page propre à ce code.
 
 ## Développement
@@ -18,13 +19,14 @@ node test/serve.mjs 8080         # http://127.0.0.1:8080/defuse-mallette/
 node test/logic.test.js          # 5000 graines : solvabilité, erreurs, score, indices
 node test/manual.test.mjs        # le manuel rendu résout les 5000 mêmes mallettes
 node test/e2e-touch.mjs          # vrai tactile CDP en 412×915 et 915×412 (Chrome requis)
+node test/e2e-glb-pad.mjs        # GLB (nœuds, charnière, BatchedMesh) + manette simulée, 2 orientations
 sh tools/build-vendor.sh         # reconstruit vendor/ depuis npm
 ```
 
-Paramètres d'URL : `?fps=1` (compteur), `?tier=0..3` (force le palier GPU), `?glb=chemin.glb` (modèle de mallette, voir le contrat dans `js/case-model.js`). Manuel : `manuel.html?code=48213-4`.
+Paramètres d'URL : `?fps=1` (compteur), `?tier=0..3` (force le palier GPU), `?glb=chemin.glb` (autre modèle de mallette, voir le contrat dans `js/case-model.js`), `?glb=0` (mallette procédurale). Manuel : `manuel.html?code=48213-4`.
 
 Portage matériel : [docs/ESP32.md](docs/ESP32.md). Fiche de suivi : [GAME.md](GAME.md).
 
 ## Licences
 
-Code : MIT. three.js, detect-gpu et qrcode-generator : MIT (licences dans `vendor/`). Les sons sont générés en Web Audio par le code. La mallette v0.1 est procédurale. Pour les modèles 3D prévus (CC BY 4.0), voir les crédits dans GAME.md.
+Code : MIT. three.js, detect-gpu et qrcode-generator : MIT (licences dans `vendor/`). Les sons sont générés en Web Audio par le code. La mallette (`assets/defuse_case_v1.glb`) est dérivée de 5 modèles Sketchfab sous CC BY 4.0 (N8, Spellkaze, selkie3d, davidg.dev, Thomp1) : crédits et modifications dans GAME.md et à l'écran Crédits du jeu.
